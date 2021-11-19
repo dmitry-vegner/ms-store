@@ -1,0 +1,5 @@
+node_modules/
+app/data/gamesIds/
+app/data/games/
+app/data/logs/
+app/data/auth/
