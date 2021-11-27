@@ -3,13 +3,27 @@ import fetch from 'node-fetch';
 import l from './logger.js';
 // Requests examples on https://www.xbox.com/es-ar/games/all-games?cat=onsale
 
-const templateIds = [
+interface Game {
+  id?: string;
+  title: string;
+  currency: string;
+  price: number;
+  score?: number;
+  market?: string;
+}
+
+interface ScoresMap {
+  [gameId: string]: number;
+}
+
+/*
+const templateIds: string[] = [
   '9NBLGGH537BL', 'BQ2NNLQPS8RS', 'BSLX1RNXR6H7', 'BW85KQB8Q31M',
   '9N6Z8DQXSQWH', '9PGPQK0XTHRZ', '9NJRX71M5X9P', 'C1KX6KNB7XMM',
   'BWMH951M3G3P', 'C01Z9J8S9BJP', '9P3PL76N0KWZ', 'BNRH7BRC1D02'
 ];
 
-const templateGames = [
+const templateGames: Game[] = [
   { title: 'Minecraft', currency: 'ARS', price: 284 },
   { title: 'A Plague Tale: Innocence', currency: 'ARS', price: 1299 },
   { title: 'Batman™: Arkham Knight', currency: 'ARS', price: 219.8 },
@@ -38,8 +52,9 @@ const templateGames = [
     price: 59.8
   }
 ];
+*/
 
-async function tryNTimes(callback, times = 5) {
+async function tryNTimes(callback: any, times = 5): Promise<boolean> {
   try {
     await callback();
     return true;
@@ -52,14 +67,19 @@ async function tryNTimes(callback, times = 5) {
 }
 
 class GamesCollector {
-  constructor(market) {
+  market: string;
+  gameIds: string[];
+  games: Game[];
+  gameScores: ScoresMap;
+
+  constructor(market: string) {
     this.market = market || 'AR';
     this.gameIds = fm.readData(`gamesIds/${this.market}`) || [];
     this.games = fm.readData(`games/${this.market}`) || [];
     this.gameScores = {};
   }
 
-  async init() {
+  async init(): Promise<void> {
     if (this.gameIds.length === 0) {
       this.gameIds = await this._collectGameIds();
     }
@@ -69,38 +89,38 @@ class GamesCollector {
     }
   }
 
-  async refreshPrices() {
+  async refreshPrices(): Promise<Game[]> {
     return this._collectGamesByIds(this.gameIds)
       .then(games => this.games = games);
   }
 
-  async refreshOffers() {
+  async refreshOffers(): Promise<Game[]> {
     return this._collectGameIds()
       .then(gameIds => this.gameIds = gameIds)
       .then(() => this.refreshPrices());
   }
 
-  getOffers() {
+  getOffers(): Game[] {
     return this.games;
   }
 
-  getGameIds() {
+  getGameIds(): string[] {
     return this.gameIds;
   }
 
-  getGameScores() {
+  getGameScores(): ScoresMap {
     return this.gameScores;
   }
 
-  async _collectGameIds(category = 'Deal') {
+  async _collectGameIds(category = 'Deal'): Promise<string[]> {
     console.debug('_collectGameIds called', this.market);
     const getUrl = (skip = 0, count = 200) => `https://reco-public.rec.mp.microsoft.com/channels/Reco/V8.0/Lists/Computed/${category}?Market=${this.market}&ItemTypes=Game&deviceFamily=Windows.Xbox&count=${count}&skipitems=${skip}`;
-    const mapBody = ({Items}) => Items.map(({Id, PredictedScore}) => {
+    const mapBody = ({Items}: any) => Items.map(({Id, PredictedScore}: any) => {
       this.gameScores[Id] = PredictedScore;
       return Id;
     });
     const totalItems = await fetch(getUrl(0, 1)).then(resp => resp.json())
-      .then(({PagingInfo}) => PagingInfo?.TotalItems || 2000);
+      .then(({PagingInfo}: any) => PagingInfo?.TotalItems || 2000);
 
     const idsPerRequest = 200;
     const requestsCount = Math.ceil(totalItems / 200);
@@ -115,7 +135,7 @@ class GamesCollector {
 
     return Promise.all(requests)
       .then(bodies => bodies.reduce((acc, cur) => {
-        cur.forEach(id => acc.push(id));
+        cur.forEach((id: string) => acc.push(id));
         return acc;
       }, []))
       .then(gameIds => {
@@ -124,7 +144,7 @@ class GamesCollector {
       });
   }
 
-  _splitByParts(fullArray, partSize = 20) {
+  _splitByParts(fullArray: any[], partSize = 20) {
     const parts = Math.ceil(fullArray.length / partSize);
     const subArrays = [];
 
@@ -137,20 +157,20 @@ class GamesCollector {
     return subArrays;
   }
 
-  async _collectGamesByIds(gameIds) {
+  async _collectGamesByIds(gameIds: string[]): Promise<Game[]> {
     const reqUrls = this._splitByParts(gameIds)
       .map(idsPart => `https://displaycatalog.mp.microsoft.com/v7.0/products?bigIds=${idsPart.join(',')}` +
         `&market=${this.market}&languages=ru-ru`);
 
     // Количество одновременных запросов, которые сервер XBOX способен обработать
     const partSize = 15;
-    const gamesChunks = [];
+    const gamesChunks: any[] = [];
     l.debug('_collectGamesByIds called', this.market);
     for (let part = 0; part * partSize < reqUrls.length; part++) {
       l.debug(`part ${part} of ${Math.ceil(reqUrls.length / partSize)}`);
       const subUrls = reqUrls.slice(part * partSize, part * partSize + partSize);
       const reqs = subUrls.map(url => tryNTimes(async () => {
-        return fetch(url).then(res => res.json()).then(({Products}) => gamesChunks.push(Products));
+        return fetch(url).then(res => res.json()).then(({Products}: any) => gamesChunks.push(Products));
       }));
       await Promise.all(reqs);
     }
@@ -161,14 +181,14 @@ class GamesCollector {
         return acc;
       }
 
-      products.map(({ProductId: id, LocalizedProperties: lang, DisplaySkuAvailabilities: market}) => ({
+      products.map(({ProductId: id, LocalizedProperties: lang, DisplaySkuAvailabilities: market}: any) => ({
         id,
         title: lang[0]?.ProductTitle || '',
         currency: market[0]?.Availabilities[0]?.OrderManagementData?.Price?.CurrencyCode || 'ARS',
         price: market[0]?.Availabilities[0]?.OrderManagementData?.Price?.ListPrice || 0,
       }))
-        .filter(({title, price}) => title !== '' && price !== 0)
-        .forEach(prod => acc.push(prod));
+        .filter(({title, price}: any) => title !== '' && price !== 0)
+        .forEach((prod: any) => acc.push(prod));
 
       return acc;
     }, []);

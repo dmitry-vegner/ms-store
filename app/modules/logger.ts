@@ -1,27 +1,27 @@
 import fm from './file-manager.js';
 
 class Logger {
-  clearLogs() {
+  clearLogs(): void {
     fm.writeData('logs/debug', '', 'txt');
     fm.writeData('logs/log', '', 'txt');
     fm.writeData('logs/error', '', 'txt');
   }
 
-  _getText(...data) {
+  _getText(...data: any[]): string {
     let text = new Date().toLocaleString('ru') + '\n';
     data.forEach(part => text += JSON.stringify(part) + '\n');
     return data.length ? text + '\n' : '';
   }
 
-  debug(...data) {
+  debug(...data: any[]): void {
     fm.appendData('logs/debug', this._getText(data), 'txt');
   }
 
-  log(...data) {
+  log(...data: any[]): void {
     fm.appendData('logs/log', this._getText(data), 'txt');
   }
 
-  error(...data) {
+  error(...data: any[]): void {
     fm.appendData('logs/error', this._getText(data), 'txt');
   }
 }

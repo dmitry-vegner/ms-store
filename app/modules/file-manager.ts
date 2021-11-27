@@ -4,7 +4,7 @@ import path from 'path';
 class FileManager {
   basePath = path.resolve('./app/data');
 
-  createFoldersIfNeed(path) {
+  createFoldersIfNeed(path: string): void {
     const pathWithoutFile = path.replace(/\/[^\/]+$/, '');
     const endPath = this.basePath + '/' + pathWithoutFile;
     if (!fs.existsSync(endPath)) {
@@ -12,24 +12,25 @@ class FileManager {
     }
   }
 
-  writeData(key, data, ext = 'json', flag = 'w') {
+  writeData(key: string, data: any, ext = 'json', flag = 'w'): void {
     const resData = ext === 'json' ? JSON.stringify(data) : data;
     this.createFoldersIfNeed(key);
     fs.writeFileSync(`${this.basePath}/${key}.${ext}`, resData, {flag});
   }
 
-  appendData(key, data, ext = 'json') {
+  appendData(key: string, data: any, ext = 'json'): void {
     return this.writeData(key, data, ext, 'a');
   }
 
-  readData(key, ext = 'json') {
+  readData(key: string, ext = 'json'): any {
     const path = `${this.basePath}/${key}.${ext}`;
+    console.debug('path:', path);
 
     if (!fs.existsSync(path)) {
       return null;
     }
 
-    const fileContent = fs.readFileSync(path);
+    const fileContent = fs.readFileSync(path).toString();
     return ext === 'json' ? JSON.parse(fileContent) : fileContent;
   }
 }

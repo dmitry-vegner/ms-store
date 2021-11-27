@@ -1,10 +1,15 @@
+// @ts-ignore
 import CC from 'currency-converter-lt';
 import fm from './file-manager.js';
 import regions from './regions.js';
 import l from './logger.js';
 
-const currencies = regions.map(({currency}) => currency);
-const backupCurrencies = {
+interface CurrencyMap {
+  [regionKey: string]: number;
+}
+
+const currencies: string[] = regions.map(({currency}) => currency);
+const backupCurrencies: CurrencyMap = {
   ARS: 0.73,
   AUD: 52.73,
   BRL: 13.09,
@@ -37,11 +42,11 @@ const backupCurrencies = {
 };
 
 class PriceConverter {
-  currencyValues = {};
+  currencyValues: CurrencyMap = {};
 
-  ruleTypes = ['ranges'];
-  ruleType = this.ruleTypes[0];
-  rules = {
+  ruleTypes: string[] = ['ranges'];
+  ruleType: string = this.ruleTypes[0];
+  rules: any = {
     ranges: {
       '0-500': 85,
       '500-700': 135,
@@ -49,14 +54,10 @@ class PriceConverter {
       '1500-2000': 150,
     }
   };
-  rule = this.rules[this.ruleType];
-  
-  constructor() {
-    console.debug('price constructor called')
-  }
+  rule: any = this.rules[this.ruleType];
 
-  async init() {
-    this.currencyValues = fm.readData('currency-values') || {};
+  async init(): Promise<void> {
+    this.currencyValues = fm.readData('currency-values') as CurrencyMap || {};
     if (Object.values(this.currencyValues).length === 0) {
       this.refreshCurrencies().catch(error => {
         l.error(`refreshCurrencies:`, error);
@@ -67,28 +68,28 @@ class PriceConverter {
     }
   }
 
-  getTaxedPrice(basePrice) {
+  getTaxedPrice(basePrice: number): number {
     let tax = 0;
 
     if (this.ruleType === 'ranges') {
-      const targetRange = Object.keys(this.rule).find(range => {
+      const targetRange: string = Object.keys(this.rule).find(range => {
         const [from, to] = range.split('-');
-        return basePrice >= from && basePrice <= to;
-      }) || Object.keys(this.rule).pop();
+        return basePrice >= +from && basePrice <= +to;
+      }) || Object.keys(this.rule).pop() || '1500-2000';
       tax = this.rule[targetRange];
     }
 
     return Math.floor(basePrice + tax);
   }
 
-  getConvertedPrice(price, currency = 'ARS') {
+  getConvertedPrice(price: number, currency = 'ARS'): number {
     return Math.floor(price * this.currencyValues[currency]);
   }
 
-  async refreshCurrencies() {
+  async refreshCurrencies(): Promise<void> {
     for (let currency of currencies) {
       await new CC({from: currency, to: 'RUB', amount: 1}).convert()
-        .then(currencyValue => this.currencyValues[currency] = currencyValue);
+        .then((currencyValue: number) => this.currencyValues[currency] = currencyValue);
     }
 
     fm.writeData('currency-values', this.currencyValues);

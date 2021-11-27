@@ -1,6 +1,12 @@
 import prices from './price-converter.js';
 
-const templateGames = [
+interface RawGame {
+  title: string;
+  currency: string;
+  price: number;
+}
+
+const templateGames: RawGame[] = [
   { title: 'Minecraft', currency: 'ARS', price: 284 },
   { title: 'A Plague Tale: Innocence', currency: 'ARS', price: 1299 },
   { title: 'Batman™: Arkham Knight', currency: 'ARS', price: 219.8 },
@@ -31,26 +37,26 @@ const templateGames = [
 ];
 
 class GamesModificator {
-  rawGames = [];
+  rawGames: RawGame[] = [];
   offers = [];
 
-  constructor(rawGames = []) {
+  constructor(rawGames: RawGame[] = []) {
     this.rawGames = rawGames;
   }
 
-  async init() {
+  async init(): Promise<void> {
     return prices.init();
   }
 
-  setGames(rawGames) {
+  setGames(rawGames: RawGame[]): void {
     this.rawGames = rawGames;
   }
 
-  getGames() {
+  getGames(): RawGame[] {
     return this.rawGames;
   }
 
-  findGames(substring) {
+  findGames(substring: string): string {
     if (typeof substring !== 'string') {
       return 'Параметром поиска игры должна быть строка';
     }
@@ -61,7 +67,7 @@ class GamesModificator {
 
     substring = substring.toLowerCase();
     return this.rawGames
-      .filter(({title}) => title.toLowerCase().includes(substring))
+      .filter(({title}: {title: string}) => title.toLowerCase().includes(substring))
       .map(({title, currency, price}) => {
         const endPrice = prices.getTaxedPrice(prices.getConvertedPrice(price, currency));
         return `${title} — ${endPrice}`;
@@ -77,18 +83,19 @@ class GamesModificator {
   }
 
   getReadableList(limit = 200) {
-    const offers = this._prepareOffersFromRawGames(this.rawGames);
+    const offers: string[] = this._prepareOffersFromRawGames();
 
-    let offersByScore = offers.sort((a, b) => a.score < b.score ? -1 : 1);
+    // TODO: let offersByScore = offers.sort((a, b) => a.score < b.score ? -1 : 1);
+    let offersByScore = offers.sort((a, b) => a < b ? -1 : 1);
     if (limit !== 0) {
       offersByScore = offersByScore.slice(0, limit);
     }
     const offersByAlphabet = offersByScore.sort((a, b) => a.toLowerCase() < b.toLowerCase() ? -1 : 1);
 
     const letters = offersByAlphabet.map(offerName => offerName.toUpperCase().slice(0, 1));
-    const uniqueLetters = letters.reduce((uniqueLetters, letter) => uniqueLetters.includes(letter) ? uniqueLetters : [...uniqueLetters, letter], []);
+    const uniqueLetters: string[] = letters.reduce((uniqueLetters: string[], letter) => uniqueLetters.includes(letter) ? uniqueLetters : [...uniqueLetters, letter], []);
 
-    const gamesByGroups = uniqueLetters.reduce((allGames, letter) => {
+    const gamesByGroups = uniqueLetters.reduce((allGames: any, letter) => {
       allGames[letter] = offersByAlphabet.filter(name => name.toUpperCase().slice(0, 1) === letter);
       return allGames;
     }, {});

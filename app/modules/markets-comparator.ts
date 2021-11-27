@@ -4,7 +4,26 @@ import fm from './file-manager.js';
 import regions from './regions.js';
 import l from './logger.js';
 
+interface GamesMap {
+  [gameId: string]: {
+    title: string;
+    price: number;
+    currency: string;
+    market: string;
+  }
+}
+
+interface MarketsMap {
+  [marketId: string]: GamesMap;
+}
+
 class MarketsComparator {
+  markets: string[];
+  collectors: Collector[];
+  gamesByMarkets: MarketsMap;
+  cheapestGames: GamesMap;
+  allGamesIds: string[];
+
   constructor() {
     this.markets = regions.map(({key}) => key);
     this.collectors = this.markets.map(market => new Collector(market));
@@ -71,20 +90,21 @@ class MarketsComparator {
       const market = collector.market;
       const scores = collector.getGameScores();
 
-      this.gamesByMarkets[market] = collector.getOffers().reduce((gamesByIds, game) => {
+      this.gamesByMarkets[market] = collector.getOffers().reduce((gamesByIds: GamesMap, game) => {
         const updatedGame = {
           id: game.id,
           title: game.title,
           currency: 'RUB',
           price: PriceConverter.getConvertedPrice(game.price, game.currency),
-          score: scores[game.id],
+          score: scores[game.id || ''],
+          market,
         };
 
-        if (!this.allGamesIds.includes(updatedGame.id)) {
-          this.allGamesIds.push(updatedGame.id);
+        if (!this.allGamesIds.includes(updatedGame.id!)) {
+          this.allGamesIds.push(updatedGame.id!);
         }
 
-        gamesByIds[updatedGame.id] = updatedGame;
+        gamesByIds[updatedGame.id!] = updatedGame;
         return gamesByIds;
       }, {});
     });
@@ -92,7 +112,6 @@ class MarketsComparator {
 
   findCheapestGames() {
     console.debug('total games: ', this.allGamesIds.length);
-    let gamesFound = 0;
     this.allGamesIds.forEach(id => {
       const availableMarkets = this.markets.filter(market => this.gamesByMarkets[market][id] != null);
       let cheapestMarket = availableMarkets[0];
@@ -106,9 +125,6 @@ class MarketsComparator {
 
       const {title, price, currency} = this.gamesByMarkets[cheapestMarket][id];
       this.cheapestGames[id] = {title, price, currency, market: cheapestMarket};
-      if (!++gamesFound % 100) {
-        console.debug(`Looked ${gamesFound} cheapest games`);
-      }
     });
 
     fm.writeData('games/cheapest', this.cheapestGames);

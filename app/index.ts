@@ -3,6 +3,7 @@ import MarketsComparator from './modules/markets-comparator.js';
 import GamesModificator from './modules/games-modificator.js';
 import fm from './modules/file-manager.js';
 import l from './modules/logger.js';
+// @ts-ignore
 import Tgfancy from 'tgfancy';
 
 const helpText = 
@@ -32,7 +33,7 @@ const fancyBot = new Tgfancy(token, {
   tgfancy: {textPaging: true}
 });
 
-async function tryNTimes(callback, times = 5) {
+async function tryNTimes(callback: any, times = 5): Promise<boolean> {
   try {
     await callback();
     return true;
@@ -70,8 +71,8 @@ async function initData() {
 
 let passwords = fm.readData('auth/passwords');
 const approvedUsers = fm.readData('auth/users');
-const checkUser = chatId => {
-  if (approvedUsers.find(({chatId: approvedChatId}) => approvedChatId === chatId)) {
+const checkUser = (chatId: string) => {
+  if (approvedUsers.find(({chatId: approvedChatId}: {chatId: string}) => approvedChatId === chatId)) {
     return true;
   }
 
@@ -81,10 +82,10 @@ const checkUser = chatId => {
 
 initData().then(() => {
   l.log('bot init');
-  fancyBot.onText(/^\/password ?(.*)$/, async ({chat}, [_, password]) => {
+  fancyBot.onText(/^\/password ?(.*)$/, async ({chat}: {chat: any}, [_, password]: [_: any, password: string]) => {
     if (passwords.includes(password)) {
       l.log('/password', password, chat.id);
-      passwords = passwords.filter(pass => pass !== password);
+      passwords = passwords.filter((pass: string) => pass !== password);
       fm.writeData('auth/passwords', passwords);
       approvedUsers.push({chatId: chat.id, password});
       fm.writeData('auth/users', approvedUsers);
@@ -95,14 +96,14 @@ initData().then(() => {
     fancyBot.sendMessage(chat.id, 'Ключ не подходит!');
   });
 
-  fancyBot.onText(/^\/list ?(\d*)/, async ({chat}, [_, limit]) => {
+  fancyBot.onText(/^\/list ?(\d*)/, async ({chat}: {chat: any}, [_, limit]: [_: any, limit: string]) => {
     l.log('/list', limit, chat.id);
     if (!checkUser(chat.id)) return;
     const list = GamesModificator.getReadableList(+limit || undefined);
     fancyBot.sendMessage(chat.id, list);
   });
 
-  fancyBot.onText(/^\/refresh_currencies$/, async ({chat}) => {
+  fancyBot.onText(/^\/refresh_currencies$/, async ({chat}: {chat: any}) => {
     l.log('/refresh_currencies', chat.id);
     if (!checkUser(chat.id)) return;
     fancyBot.sendMessage(chat.id, 'Пожалуйста, подождите. Это может занять время...');
@@ -114,7 +115,7 @@ initData().then(() => {
       });
   });
 
-  fancyBot.onText(/^\/refresh_games$/, async ({chat}) => {
+  fancyBot.onText(/^\/refresh_games$/, async ({chat}: {chat: any}) => {
     l.log('/refresh_games', chat.id);
     if (!checkUser(chat.id)) return;
     fancyBot.sendMessage(chat.id, 'Пожалуйста, подождите. Процесс займёт несколько минут!');
@@ -132,19 +133,19 @@ initData().then(() => {
     }
   });
 
-  fancyBot.onText(/^\/find ?(.*)$/, async ({chat}, [_, query]) => {
+  fancyBot.onText(/^\/find ?(.*)$/, async ({chat}: {chat: any}, [_, query]: [_: any, query: string]) => {
     l.log(`/find ${query}`, chat.id);
     if (!checkUser(chat.id)) return;
     const foundGames = GamesModificator.findGames(query);
     fancyBot.sendMessage(chat.id, foundGames);
   });
 
-  fancyBot.onText(/^\/ping$/, async ({chat}) => {
+  fancyBot.onText(/^\/ping$/, async ({chat}: {chat: any}) => {
     l.log(`/ping`, chat.id);
     fancyBot.sendMessage(chat.id, 'pong');
   });
 
-  fancyBot.onText(/^\/help$/, async ({chat}) => {
+  fancyBot.onText(/^\/help$/, async ({chat}: {chat: any}) => {
     l.log(`/help`, chat.id);
     if (!checkUser(chat.id)) return;
     fancyBot.sendMessage(chat.id, helpText);
