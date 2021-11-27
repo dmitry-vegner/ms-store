@@ -1,4 +1,10 @@
-export default [
+export interface Region {
+  key: string;
+  title: string;
+  currency: string;
+}
+
+const regions: Region[] = [
   {key: 'AR', title: 'Аргентина', currency: 'ARS'},
   {key: 'AU', title: 'Австралия', currency: 'AUD'},
   {key: 'BR', title: 'Бразилия', currency: 'BRL'},
@@ -29,3 +35,5 @@ export default [
   {key: 'US', title: 'США', currency: 'USD'},
   {key: 'ZA', title: 'ЮАР', currency: 'ZAR'},
 ];
+
+export default regions;

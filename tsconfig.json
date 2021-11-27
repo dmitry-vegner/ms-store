@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "es2021",
+    "module": "es2020",
+    "moduleResolution": "node",
+    "lib": ["es2021"],
+
+    "baseUrl": ".",
+    "outDir": "dist",
+    "pretty": true,
+    "sourceMap": true,
+
+    "strict": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "experimentalDecorators": true,
+    "skipLibCheck": true,
+    "alwaysStrict": true,
+    "noUnusedLocals": true,
+    "forceConsistentCasingInFileNames": true
+  }
+}
