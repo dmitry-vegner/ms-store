@@ -1,11 +1,13 @@
-import PriceConverter from './modules/price-converter.js';
+import CurrencyConverter from './modules/currency-converter.js';
 import MarketsComparator from './modules/markets-comparator.js';
 import GamesModificator from './modules/games-modificator.js';
 import fm from './modules/file-manager.js';
-import l from './modules/logger.js';
 // @ts-ignore
 import Tgfancy from 'tgfancy';
+import feeCalculator from './modules/fee-calculator.js';
+import {Game} from './types/entities.js';
 
+let gamesModificator: GamesModificator;
 const helpText = 
 `/list - Сформировать список из N (по умолчанию 200) наиболее популярных игр
 Пример: /list 100
@@ -21,6 +23,23 @@ const helpText =
 /find - Найти игру по части названия
 Вернёт список игр, содержащих искомую подстроку
 Пример: find halo
+
+/setrule - Установить новое правило наценки на игры
+На данный момент поддерживается четыре типа наценки:
+1. Абсолютная величина. Пример: /setrule 150.50
+2. Относительная величина. Пример: /setrule 20%
+3. Диапазоны с абсолютной величиной. Пример:
+/setrule
+0 500 85.0
+500 700 135.0
+700 1400 140
+1400 2000 150
+4. Диапазоны с относительной величиной. Пример:
+/setrule
+0 500 50.0%
+500 700 35%
+700 1400 25%
+1400 2000 10%
 
 /ping - Проверить активность бота
 Вернёт pong, если бот работает, иначе - обращайтесь к автору бота
@@ -38,7 +57,7 @@ async function tryNTimes(callback: any, times = 5): Promise<boolean> {
     await callback();
     return true;
   } catch (e) {
-    l.error(`try  ${callback} ${times - 1}Times catch:`, e);
+    console.error(`try  ${callback} ${times - 1}Times catch:`, e);
     return times > 0 ?
       await tryNTimes(callback, times - 1) :
       false;
@@ -48,24 +67,27 @@ async function tryNTimes(callback: any, times = 5): Promise<boolean> {
 async function initData() {
   try {
     let e = true;
-    l.clearLogs();
-    e = await tryNTimes(async () => await PriceConverter.init());
+    e = await tryNTimes(async () => await CurrencyConverter.init());
     if (!e) throw 'Жопа в ценниках';
-    l.log('PriceConverter init');
+    console.log('CurrencyConverter init');
     e = await tryNTimes(async () => await MarketsComparator.init());
     if (!e) throw 'Жопа в сравнилке';
-    l.log('MarketsComparator init');
-    e = await tryNTimes(async () => await GamesModificator.init());
-    if (!e) throw 'Жопа в хранилище!';
-    l.log('GamesModificator init');
+    console.log('MarketsComparator init');
+    // e = await tryNTimes(async () => await GamesModificator.init());
+    // if (!e) throw 'Жопа в хранилище!';
+    // console.log('GamesModificator init');
 
     MarketsComparator.findCheapestGames();
-    const cheapestGames = MarketsComparator.getCheapestGames();
-    const isCheapestGamesLoaded = Object.values(cheapestGames).length !== 0;
-    l.log('isCheapestGamesLoaded', isCheapestGamesLoaded);
-    GamesModificator.setGames(Object.values(cheapestGames));
+    const cheapestGames: Game[] = MarketsComparator.getCheapestGames();
+    const isCheapestGamesLoaded = cheapestGames.length !== 0;
+    console.log('isCheapestGamesLoaded', isCheapestGamesLoaded);
+    console.debug('cheapestGames', cheapestGames);
+    gamesModificator = new GamesModificator(cheapestGames);
+    await gamesModificator.init();
+    if (!e) throw 'Жопа в хранилище!';
+    console.log('GamesModificator init');
   } catch (e) {
-    l.error('Error at init:', e);
+    console.error('Error at init:', e);
   }
 }
 
@@ -81,10 +103,10 @@ const checkUser = (chatId: string) => {
 }
 
 initData().then(() => {
-  l.log('bot init');
+  console.log('bot init');
   fancyBot.onText(/^\/password ?(.*)$/, async ({chat}: {chat: any}, [_, password]: [_: any, password: string]) => {
     if (passwords.includes(password)) {
-      l.log('/password', password, chat.id);
+      console.log('/password', password, chat.id);
       passwords = passwords.filter((pass: string) => pass !== password);
       fm.writeData('auth/passwords', passwords);
       approvedUsers.push({chatId: chat.id, password});
@@ -97,56 +119,70 @@ initData().then(() => {
   });
 
   fancyBot.onText(/^\/list ?(\d*)/, async ({chat}: {chat: any}, [_, limit]: [_: any, limit: string]) => {
-    l.log('/list', limit, chat.id);
+    console.log('/list', limit, chat.id);
     if (!checkUser(chat.id)) return;
-    const list = GamesModificator.getReadableList(+limit || undefined);
-    fancyBot.sendMessage(chat.id, list);
+    const list = gamesModificator.getReadableList(+limit || undefined);
+    fancyBot.sendMessage(chat.id, list || 'Список игр пуст :(');
   });
 
   fancyBot.onText(/^\/refresh_currencies$/, async ({chat}: {chat: any}) => {
-    l.log('/refresh_currencies', chat.id);
+    console.log('/refresh_currencies', chat.id);
     if (!checkUser(chat.id)) return;
     fancyBot.sendMessage(chat.id, 'Пожалуйста, подождите. Это может занять время...');
-    PriceConverter.refreshCurrencies()
+    CurrencyConverter.refreshCurrencies()
       .then(() => fancyBot.sendMessage(chat.id, 'Курсы валют успешно обновлены'))
       .catch(error => {
-        l.error('/refresh_currencies', error);
+        console.error('/refresh_currencies', error);
         fancyBot.sendMessage(chat.id, 'При обновлении курсов валют произошла ошибка');
       });
   });
 
   fancyBot.onText(/^\/refresh_games$/, async ({chat}: {chat: any}) => {
-    l.log('/refresh_games', chat.id);
+    console.log('/refresh_games', chat.id);
     if (!checkUser(chat.id)) return;
     fancyBot.sendMessage(chat.id, 'Пожалуйста, подождите. Процесс займёт несколько минут!');
     try {
       await MarketsComparator.refreshMarkets();
-      l.debug('/refresh_games after await MarketsComparator.refreshMarkets()');
-      const cheapestGames = MarketsComparator.getCheapestGames();
-      l.debug('/refresh_games after MarketsComparator.getCheapestGames');
-      GamesModificator.setGames(Object.values(cheapestGames));
-      l.debug('/refresh_games after GamesModificator.setGames(Object.values(cheapestGames))');
+      console.debug('/refresh_games after await MarketsComparator.refreshMarkets()');
+      const cheapestGames: Game[] = MarketsComparator.getCheapestGames();
+      console.debug('/refresh_games after MarketsComparator.getCheapestGames');
+      gamesModificator = new GamesModificator(cheapestGames);
+      await gamesModificator.init();
+      console.debug('/refresh_games after GamesModificator.setGames(Object.values(cheapestGames))');
       fancyBot.sendMessage(chat.id, 'Обновление завершено!');
     } catch (error) {
-      l.error(`/refresh_games`, error);
+      console.error(`/refresh_games`, error);
       fancyBot.sendMessage(chat.id, 'Обновление не удалось, попробуйте ещё раз :(');
     }
   });
 
   fancyBot.onText(/^\/find ?(.*)$/, async ({chat}: {chat: any}, [_, query]: [_: any, query: string]) => {
-    l.log(`/find ${query}`, chat.id);
+    console.log(`/find ${query}`, chat.id);
     if (!checkUser(chat.id)) return;
-    const foundGames = GamesModificator.findGames(query);
+    const foundGames = gamesModificator.findGames(query);
     fancyBot.sendMessage(chat.id, foundGames);
   });
 
+  fancyBot.onText(/^\/setrule ?(.*)$/, async ({chat}: {chat: any}, [_, query]: [_: any, query: string]) => {
+    console.log(`/setrule ${query}`, chat.id);
+    if (!checkUser(chat.id)) return;
+    try {
+      feeCalculator.setRuleFromText(query);
+      console.log('Set new rules', feeCalculator.rules);
+      fancyBot.sendMessage(chat.id, 'Новые правила установлены!');
+    } catch(e) {
+      console.error('Failed to set new rules', e);
+      fancyBot.sendMessage(chat.id, 'Новые правила не установлены! Проверьте правильность написания правил.');
+    }
+  });
+
   fancyBot.onText(/^\/ping$/, async ({chat}: {chat: any}) => {
-    l.log(`/ping`, chat.id);
+    console.log(`/ping`, chat.id);
     fancyBot.sendMessage(chat.id, 'pong');
   });
 
   fancyBot.onText(/^\/help$/, async ({chat}: {chat: any}) => {
-    l.log(`/help`, chat.id);
+    console.log(`/help`, chat.id);
     if (!checkUser(chat.id)) return;
     fancyBot.sendMessage(chat.id, helpText);
   });

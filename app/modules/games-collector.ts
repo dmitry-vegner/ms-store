@@ -1,20 +1,8 @@
-import fm from './file-manager.js';
+import {GamesResponse, IdsResponse, Product} from 'app/types/requests.js';
 import fetch from 'node-fetch';
-import l from './logger.js';
-// Requests examples on https://www.xbox.com/es-ar/games/all-games?cat=onsale
 
-interface Game {
-  id?: string;
-  title: string;
-  currency: string;
-  price: number;
-  score?: number;
-  market?: string;
-}
-
-interface ScoresMap {
-  [gameId: string]: number;
-}
+import {Game, ScoresMap} from '../types/entities.js';
+import fm from './file-manager.js';
 
 /*
 const templateIds: string[] = [
@@ -59,7 +47,7 @@ async function tryNTimes(callback: any, times = 5): Promise<boolean> {
     await callback();
     return true;
   } catch (e) {
-    l.error(`try${times - 1}Times catch:`, e);
+    console.error(`try${times - 1}Times catch:`, e);
     return times > 0 ?
       await tryNTimes(callback, times - 1) :
       false;
@@ -70,34 +58,35 @@ class GamesCollector {
   market: string;
   gameIds: string[];
   games: Game[];
-  gameScores: ScoresMap;
+  gameScores: ScoresMap = {};
 
-  constructor(market: string) {
-    this.market = market || 'AR';
+  constructor(market = 'AR') {
+    this.market = market;
     this.gameIds = fm.readData(`gamesIds/${this.market}`) || [];
     this.games = fm.readData(`games/${this.market}`) || [];
     this.gameScores = {};
   }
 
   async init(): Promise<void> {
-    if (this.gameIds.length === 0) {
-      this.gameIds = await this._collectGameIds();
-    }
-
-    if (this.games.length === 0) {
-      this.games = await this._collectGamesByIds(this.gameIds);
+    if ([this.gameIds.length, this.games.length].includes(0)) {
+      await this.refreshOffers();
     }
   }
 
-  async refreshPrices(): Promise<Game[]> {
-    return this._collectGamesByIds(this.gameIds)
-      .then(games => this.games = games);
-  }
+  async refreshOffers(): Promise<void> {
+    console.debug('refreshOffers() called for ', this.market);
+    // console.debug('collectGameIds: Before');
+    this.gameIds = await this.collectGameIds();
+    // console.debug('collectGameIds: After');
+    fm.writeData(`gamesIds/${this.market}`, this.gameIds);
+    // console.debug('collectGameIds: Saved');
 
-  async refreshOffers(): Promise<Game[]> {
-    return this._collectGameIds()
-      .then(gameIds => this.gameIds = gameIds)
-      .then(() => this.refreshPrices());
+    // console.debug('collectGamesByIds: Before');
+    this.games = await this.collectGamesByIds();
+    // console.debug('collectGamesByIds: After');
+    fm.writeData(`games/${this.market}`, this.games);
+    // console.debug('collectGamesByIds: Saved');
+    console.debug('refreshOffers() complete for ', this.market);
   }
 
   getOffers(): Game[] {
@@ -112,90 +101,85 @@ class GamesCollector {
     return this.gameScores;
   }
 
-  async _collectGameIds(category = 'Deal'): Promise<string[]> {
-    console.debug('_collectGameIds called', this.market);
-    const getUrl = (skip = 0, count = 200) => `https://reco-public.rec.mp.microsoft.com/channels/Reco/V8.0/Lists/Computed/${category}?Market=${this.market}&ItemTypes=Game&deviceFamily=Windows.Xbox&count=${count}&skipitems=${skip}`;
-    const mapBody = ({Items}: any) => Items.map(({Id, PredictedScore}: any) => {
-      this.gameScores[Id] = PredictedScore;
-      return Id;
-    });
-    const totalItems = await fetch(getUrl(0, 1)).then(resp => resp.json())
-      .then(({PagingInfo}: any) => PagingInfo?.TotalItems || 2000);
+  private async collectGameIds(category = 'Deal'): Promise<string[]> {
+    const getUrl = (skip = 0, count = 200) => `https://reco-public.rec.mp.microsoft.com/channels/Reco/V8.0/Lists/Computed/` +
+      `${category}?Market=${this.market}&ItemTypes=Game&deviceFamily=Windows.Xbox&count=${count}&skipitems=${skip}`;
+
+    const totalItesmResponse = await fetch(getUrl(0, 1)).then(resp => resp.json()) as IdsResponse;
+    const totalItems = totalItesmResponse.PagingInfo.TotalItems || 2000;
 
     const idsPerRequest = 200;
     const requestsCount = Math.ceil(totalItems / 200);
     const requests = [];
 
+    const mapIdsResponse = ({Items}: IdsResponse): string[] => Items.map(({Id, PredictedScore}) => {
+      this.gameScores[Id] = PredictedScore;
+      return Id;
+    });
+
     for (let part = 0; part < requestsCount; part++) {
-      requests.push(
-        fetch(getUrl(part * idsPerRequest, idsPerRequest))
-          .then(resp => resp.json()).then(mapBody)
-      );
+      const request: Promise<IdsResponse> = fetch(getUrl(part * idsPerRequest, idsPerRequest))
+        .then(resp => resp.json()) as Promise<IdsResponse>;
+      requests.push(request.then((res: IdsResponse): string[] => mapIdsResponse(res)));
     }
 
     return Promise.all(requests)
-      .then(bodies => bodies.reduce((acc, cur) => {
-        cur.forEach((id: string) => acc.push(id));
-        return acc;
-      }, []))
-      .then(gameIds => {
-        fm.writeData(`gamesIds/${this.market}`, gameIds);
-        return gameIds;
-      });
+      .then((idsParts: string[][]): string[] => idsParts
+        .reduce((allIds: string[], idsPart: string[]) => {
+          idsPart.forEach((id: string) => allIds.push(id));
+          return allIds;
+        }, [])
+      );
   }
 
-  _splitByParts(fullArray: any[], partSize = 20) {
-    const parts = Math.ceil(fullArray.length / partSize);
-    const subArrays = [];
+  private splitByChunks(fullArray: Array<any>, chunkSize = 20) {
+    const chunksCount = Math.ceil(fullArray.length / chunkSize);
+    const chunkedArray = [];
 
-    for (let quadIndex = 0; quadIndex < parts; quadIndex++) {
-      const startIndex = quadIndex * partSize;
-      const endIndex = startIndex + partSize;
-      subArrays.push(fullArray.slice(startIndex, endIndex));
+    for (let chunkIndex = 0; chunkIndex < chunksCount; chunkIndex++) {
+      const startIndex = chunkIndex * chunkSize;
+      const endIndex = startIndex + chunkSize;
+      chunkedArray.push(fullArray.slice(startIndex, endIndex));
     }
 
-    return subArrays;
+    return chunkedArray;
   }
 
-  async _collectGamesByIds(gameIds: string[]): Promise<Game[]> {
-    const reqUrls = this._splitByParts(gameIds)
-      .map(idsPart => `https://displaycatalog.mp.microsoft.com/v7.0/products?bigIds=${idsPart.join(',')}` +
-        `&market=${this.market}&languages=ru-ru`);
+  private async collectGamesByIds(): Promise<Game[]> {
+    const idsByChunks: string[][] = this.splitByChunks(this.gameIds);
+    const reqUrls: string[] = idsByChunks.map(idsChunk => `https://displaycatalog.mp.microsoft.com/v7.0/products?bigIds=` +
+      `${idsChunk.join(',')}&market=${this.market}&languages=ru-ru`);
 
     // Количество одновременных запросов, которые сервер XBOX способен обработать
-    const partSize = 15;
-    const gamesChunks: any[] = [];
-    l.debug('_collectGamesByIds called', this.market);
-    for (let part = 0; part * partSize < reqUrls.length; part++) {
-      l.debug(`part ${part} of ${Math.ceil(reqUrls.length / partSize)}`);
-      const subUrls = reqUrls.slice(part * partSize, part * partSize + partSize);
-      const reqs = subUrls.map(url => tryNTimes(async () => {
-        return fetch(url).then(res => res.json()).then(({Products}: any) => gamesChunks.push(Products));
+    const chunkSize = 15;
+    const chunksCount = Math.ceil(reqUrls.length / chunkSize);
+    const games: Game[] = [];
+
+    for (let chunkIndex = 0; chunkIndex < chunksCount; chunkIndex++) {
+      const startIndex = chunkIndex * chunkSize;
+      const endIndex = startIndex + chunkSize;
+      const urlsChunk: string[] = reqUrls.slice(startIndex, endIndex);
+
+      const reqs = urlsChunk.map(url => tryNTimes(async () => {
+        const {Products} = await fetch(url).then(res => res.json()) as GamesResponse;
+        Products?.forEach(({ProductId: id, LocalizedProperties: lang, DisplaySkuAvailabilities: market}: Product) => {
+          const title = lang[0]?.ProductTitle || '';
+          const price = market[0]?.Availabilities[0]?.OrderManagementData?.Price?.ListPrice || 0;
+          const currency = market[0]?.Availabilities[0]?.OrderManagementData?.Price?.CurrencyCode || 'ARS';
+
+          if (title === '' || price === 0) {
+            console.error('empty game with id', id);
+            return;
+          }
+
+          games.push({
+            id, title, currency, price, score: this.gameScores[id] || 0, market: this.market,
+          });
+        });
       }));
       await Promise.all(reqs);
     }
 
-    l.debug(`Before chunk reduce`);
-    const games = gamesChunks.reduce((acc, products) => {
-      if (products == null) {
-        return acc;
-      }
-
-      products.map(({ProductId: id, LocalizedProperties: lang, DisplaySkuAvailabilities: market}: any) => ({
-        id,
-        title: lang[0]?.ProductTitle || '',
-        currency: market[0]?.Availabilities[0]?.OrderManagementData?.Price?.CurrencyCode || 'ARS',
-        price: market[0]?.Availabilities[0]?.OrderManagementData?.Price?.ListPrice || 0,
-      }))
-        .filter(({title, price}: any) => title !== '' && price !== 0)
-        .forEach((prod: any) => acc.push(prod));
-
-      return acc;
-    }, []);
-
-    l.debug(`After chunk reduce`);
-    fm.writeData(`games/${this.market}`, games);
-    l.debug(`After writing games`);
     return games;
   }
 }

@@ -1,12 +1,9 @@
 // @ts-ignore
 import CC from 'currency-converter-lt';
+
+import {CurrencyMap} from 'app/types/entities.js';
 import fm from './file-manager.js';
 import regions from './regions.js';
-import l from './logger.js';
-
-interface CurrencyMap {
-  [regionKey: string]: number;
-}
 
 const currencies: string[] = regions.map(({currency}) => currency);
 const backupCurrencies: CurrencyMap = {
@@ -41,45 +38,19 @@ const backupCurrencies: CurrencyMap = {
   ZAR: 4.66,
 };
 
-class PriceConverter {
+class CurrencyConverter {
   currencyValues: CurrencyMap = {};
-
-  ruleTypes: string[] = ['ranges'];
-  ruleType: string = this.ruleTypes[0];
-  rules: any = {
-    ranges: {
-      '0-500': 85,
-      '500-700': 135,
-      '700-1400': 140,
-      '1500-2000': 150,
-    }
-  };
-  rule: any = this.rules[this.ruleType];
 
   async init(): Promise<void> {
     this.currencyValues = fm.readData('currency-values') as CurrencyMap || {};
     if (Object.values(this.currencyValues).length === 0) {
       this.refreshCurrencies().catch(error => {
-        l.error(`refreshCurrencies:`, error);
+        console.error(`refreshCurrencies:`, error);
         currencies.forEach(currency =>
           this.currencyValues[currency] = backupCurrencies[currency] || 0
         );
       });
     }
-  }
-
-  getTaxedPrice(basePrice: number): number {
-    let tax = 0;
-
-    if (this.ruleType === 'ranges') {
-      const targetRange: string = Object.keys(this.rule).find(range => {
-        const [from, to] = range.split('-');
-        return basePrice >= +from && basePrice <= +to;
-      }) || Object.keys(this.rule).pop() || '1500-2000';
-      tax = this.rule[targetRange];
-    }
-
-    return Math.floor(basePrice + tax);
   }
 
   getConvertedPrice(price: number, currency = 'ARS'): number {
@@ -96,4 +67,4 @@ class PriceConverter {
   }
 }
 
-export default new PriceConverter();
+export default new CurrencyConverter();
