@@ -97,8 +97,8 @@ class MarketsComparator {
       let cheapestMarket = availableMarkets[0];
 
       availableMarkets.forEach(marketKey => {
-        const price = this.gamesByMarkets[marketKey][id]?.price;
-        if (price < this.gamesByMarkets[cheapestMarket][id].price) {
+        const price = this.gamesByMarkets[marketKey][id].convertedPrice;
+        if (price < this.gamesByMarkets[cheapestMarket][id].convertedPrice) {
           cheapestMarket = marketKey;
         }
       });

@@ -92,7 +92,7 @@ async function initData() {
 }
 
 let passwords = fm.readData('auth/passwords');
-const approvedUsers = fm.readData('auth/users');
+const approvedUsers = fm.readData('auth/users') || [];
 const checkUser = (chatId: string) => {
   if (approvedUsers.find(({chatId: approvedChatId}: {chatId: string}) => approvedChatId === chatId)) {
     return true;
