@@ -3,6 +3,7 @@ export interface Game {
   title: string;
   currency: string;
   price: number;
+  convertedPrice: number;
   score: number;
   market: string;
 }

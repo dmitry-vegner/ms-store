@@ -2,6 +2,7 @@ import {GamesResponse, IdsResponse, Product} from 'app/types/requests.js';
 import fetch from 'node-fetch';
 
 import {Game, ScoresMap} from '../types/entities.js';
+import currencyConverter from './currency-converter.js';
 import fm from './file-manager.js';
 
 /*
@@ -166,6 +167,7 @@ class GamesCollector {
           const title = lang[0]?.ProductTitle || '';
           const price = market[0]?.Availabilities[0]?.OrderManagementData?.Price?.ListPrice || 0;
           const currency = market[0]?.Availabilities[0]?.OrderManagementData?.Price?.CurrencyCode || 'ARS';
+          const convertedPrice = currencyConverter.getConvertedPrice(price, currency);
 
           if (title === '' || price === 0) {
             console.error('empty game with id', id);
@@ -173,7 +175,7 @@ class GamesCollector {
           }
 
           games.push({
-            id, title, currency, price, score: this.gameScores[id] || 0, market: this.market,
+            id, title, currency, price, convertedPrice, score: this.gameScores[id] || 0, market: this.market,
           });
         });
       }));
