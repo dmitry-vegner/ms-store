@@ -1,42 +1,28 @@
+import {Game, GamesMap, MarketsMap} from '../types/entities.js';
 import Collector from './games-collector.js';
-import PriceConverter from './price-converter.js';
+import CurrencyConverter from './currency-converter.js';
 import fm from './file-manager.js';
 import regions from './regions.js';
 import l from './logger.js';
 
-interface GamesMap {
-  [gameId: string]: {
-    title: string;
-    price: number;
-    currency: string;
-    market: string;
-  }
-}
-
-interface MarketsMap {
-  [marketId: string]: GamesMap;
-}
-
 class MarketsComparator {
   markets: string[];
   collectors: Collector[];
-  gamesByMarkets: MarketsMap;
+  gamesByMarkets: MarketsMap = {};
   cheapestGames: GamesMap;
-  allGamesIds: string[];
+  allGamesIds: string[] = [];
 
   constructor() {
     this.markets = regions.map(({key}) => key);
     this.collectors = this.markets.map(market => new Collector(market));
-    this.gamesByMarkets = {};
     this.cheapestGames = fm.readData('games/cheapest') || {};
-    this.allGamesIds = [];
   }
 
-  async init() {
+  async init(): Promise<void> {
     try {
-      await PriceConverter.init();
+      await CurrencyConverter.init();
     } catch (e) {
-      l.error('Цены ебаные', e);
+      console.error('Цены ебаные', e);
     }
 
     try {
@@ -44,23 +30,23 @@ class MarketsComparator {
         await collector.init();
       }
     } catch (e) {
-      l.error('Фетчеры ебаные', e);
+      console.error('Фетчеры ебаные', e);
     }
 
     try {
-      this._collectGamesByMarkets();
+      this.collectGamesByMarkets();
     } catch (e) {
-      l.error('Сбор игр по маркетам нахуй', e);
+      console.error('Сбор игр по маркетам нахуй', e);
     }
 
     try {
       this.findCheapestGames();
     } catch (e) {
-      l.error('Поиск дешёвок ебаных', e);
+      console.error('Поиск дешёвок ебаных', e);
     }
   }
 
-  async refreshMarkets() {
+  async refreshMarkets(): Promise<void> {
     try {
       for (let collector of this.collectors) {
         await collector.refreshOffers();
@@ -71,10 +57,10 @@ class MarketsComparator {
     }
 
     try {
-      this._collectGamesByMarkets();
-      l.debug('success this._collectGamesByMarkets()');
+      this.collectGamesByMarkets();
+      l.debug('success this.collectGamesByMarkets()');
     } catch (e) {
-      l.debug('fail this._collectGamesByMarkets()', e);
+      l.debug('fail this.collectGamesByMarkets()', e);
     }
 
     try {
@@ -85,33 +71,27 @@ class MarketsComparator {
     }
   }
 
-  _collectGamesByMarkets() {
-    this.collectors.forEach(collector => {
-      const market = collector.market;
-      const scores = collector.getGameScores();
+  private getGamesMapByGamesArray(games: Game[]): GamesMap {
+    const gamesMap: GamesMap = {};
 
-      this.gamesByMarkets[market] = collector.getOffers().reduce((gamesByIds: GamesMap, game) => {
-        const updatedGame = {
-          id: game.id,
-          title: game.title,
-          currency: 'RUB',
-          price: PriceConverter.getConvertedPrice(game.price, game.currency),
-          score: scores[game.id || ''],
-          market,
-        };
+    games.forEach(game => {
+      if (!this.allGamesIds.includes(game.id)) {
+        this.allGamesIds.push(game.id);
+      }
 
-        if (!this.allGamesIds.includes(updatedGame.id!)) {
-          this.allGamesIds.push(updatedGame.id!);
-        }
-
-        gamesByIds[updatedGame.id!] = updatedGame;
-        return gamesByIds;
-      }, {});
+      gamesMap[game.id] = game;
     });
+
+    return gamesMap;
   }
 
-  findCheapestGames() {
-    console.debug('total games: ', this.allGamesIds.length);
+  private collectGamesByMarkets() {
+    this.collectors.forEach(collector => this.gamesByMarkets[collector.market] =
+      this.getGamesMapByGamesArray(collector.getOffers())
+    );
+  }
+
+  findCheapestGames(): void {
     this.allGamesIds.forEach(id => {
       const availableMarkets = this.markets.filter(market => this.gamesByMarkets[market][id] != null);
       let cheapestMarket = availableMarkets[0];
@@ -123,20 +103,14 @@ class MarketsComparator {
         }
       });
 
-      const {title, price, currency} = this.gamesByMarkets[cheapestMarket][id];
-      this.cheapestGames[id] = {title, price, currency, market: cheapestMarket};
+      this.cheapestGames[id] = this.gamesByMarkets[cheapestMarket][id];
     });
 
     fm.writeData('games/cheapest', this.cheapestGames);
   }
 
-  getCheapestGames() {
-    if (Object.values(this.cheapestGames).length === 0) {
-      this._collectGamesByMarkets();
-      this.findCheapestGames();
-    }
-
-    return this.cheapestGames;
+  getCheapestGames(): Game[] {
+    return Object.values(this.cheapestGames);
   }
 }
 

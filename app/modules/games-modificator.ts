@@ -1,12 +1,10 @@
-import prices from './price-converter.js';
+import {Game} from '../types/entities.js';
+import currencyConverter from './currency-converter.js';
+import feeCalculator from './fee-calculator.js';
+import regions from './regions.js';
 
-interface RawGame {
-  title: string;
-  currency: string;
-  price: number;
-}
-
-const templateGames: RawGame[] = [
+/*
+const templateGames: Game[] = [
   { title: 'Minecraft', currency: 'ARS', price: 284 },
   { title: 'A Plague Tale: Innocence', currency: 'ARS', price: 1299 },
   { title: 'Batman™: Arkham Knight', currency: 'ARS', price: 219.8 },
@@ -34,69 +32,53 @@ const templateGames: RawGame[] = [
     currency: 'ARS',
     price: 59.8
   }
-];
+].map(({title, currency, price}, score): Game => ({id: score.toString(), title, currency, price, market: 'AR', score}));
+*/
 
 class GamesModificator {
-  rawGames: RawGame[] = [];
+  private games: Game[];
   offers = [];
 
-  constructor(rawGames: RawGame[] = []) {
-    this.rawGames = rawGames;
+  constructor(games: Game[] = []) {
+    this.games = games;
   }
 
   async init(): Promise<void> {
-    return prices.init();
+    await currencyConverter.init();
   }
 
-  setGames(rawGames: RawGame[]): void {
-    this.rawGames = rawGames;
-  }
-
-  getGames(): RawGame[] {
-    return this.rawGames;
-  }
-
-  findGames(substring: string): string {
-    if (typeof substring !== 'string') {
+  findGames(query: string): string {
+    if (typeof query !== 'string') {
       return 'Параметром поиска игры должна быть строка';
     }
 
-    if (substring.length < 3) {
+    if (query.length < 3) {
       return 'Строка для поиска игры должна содержать не менее трёх символов';
     }
 
-    substring = substring.toLowerCase();
-    return this.rawGames
-      .filter(({title}: {title: string}) => title.toLowerCase().includes(substring))
-      .map(({title, currency, price}) => {
-        const endPrice = prices.getTaxedPrice(prices.getConvertedPrice(price, currency));
-        return `${title} — ${endPrice}`;
-      })
-      .join('\n');
+    query = query.toLowerCase();
+    const foundGames: Game[] = this.games
+      .filter(({title}) => title.toLowerCase().includes(query))
+
+    return foundGames.length ?
+      foundGames.map(game => this.getGameRecord(game)).join('\n') :
+      'Игр по вашему запросу не найдено :(';
   }
 
-  _prepareOffersFromRawGames() {
-    return this.rawGames.map(({title, currency, price}) => {
-      const endPrice = prices.getTaxedPrice(prices.getConvertedPrice(price, currency));
-      return `${title} — ${endPrice}`;
-    });
-  }
+  getReadableList(limit = 200): string {
+    limit = limit || this.games.length + 1;
 
-  getReadableList(limit = 200) {
-    const offers: string[] = this._prepareOffersFromRawGames();
+    const sortedGames: string[] = this.games
+      .sort((a, b) => a.score - b.score)
+      .slice(0, limit)
+      .map(game => this.getGameRecord(game, false))
+      .sort((a, b) => a.toLowerCase() < b.toLowerCase() ? -1 : 1);
 
-    // TODO: let offersByScore = offers.sort((a, b) => a.score < b.score ? -1 : 1);
-    let offersByScore = offers.sort((a, b) => a < b ? -1 : 1);
-    if (limit !== 0) {
-      offersByScore = offersByScore.slice(0, limit);
-    }
-    const offersByAlphabet = offersByScore.sort((a, b) => a.toLowerCase() < b.toLowerCase() ? -1 : 1);
-
-    const letters = offersByAlphabet.map(offerName => offerName.toUpperCase().slice(0, 1));
+    const letters = sortedGames.map(offerName => offerName.toUpperCase().slice(0, 1));
     const uniqueLetters: string[] = letters.reduce((uniqueLetters: string[], letter) => uniqueLetters.includes(letter) ? uniqueLetters : [...uniqueLetters, letter], []);
 
     const gamesByGroups = uniqueLetters.reduce((allGames: any, letter) => {
-      allGames[letter] = offersByAlphabet.filter(name => name.toUpperCase().slice(0, 1) === letter);
+      allGames[letter] = sortedGames.filter(name => name.toUpperCase().slice(0, 1) === letter);
       return allGames;
     }, {});
 
@@ -104,6 +86,17 @@ class GamesModificator {
       .map(letter => letter + '\n\n' + gamesByGroups[letter].join('\n') + '\n')
       .join('\n');
   }
+
+  private getGameRecord({id, title, currency, price, market}: Game, isComplex = true): string {
+    const convertedPrice = currencyConverter.getConvertedPrice(price, currency);
+    const endPrice = feeCalculator.getTaxedPrice(convertedPrice);
+    const fee = endPrice - convertedPrice;
+
+    const marketSuffix = market === 'AR' ? '' : ' ' + regions.find(({key}) => key === market)?.title;
+    return isComplex ?
+      `[${id}${marketSuffix}] ${title} — ${convertedPrice} + ${fee} = ${endPrice}₽` :
+      `${title} — ${endPrice}${marketSuffix}`;
+  }
 }
 
-export default new GamesModificator(templateGames);
+export default GamesModificator;

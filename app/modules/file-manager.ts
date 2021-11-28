@@ -24,7 +24,6 @@ class FileManager {
 
   readData(key: string, ext = 'json'): any {
     const path = `${this.basePath}/${key}.${ext}`;
-    console.debug('path:', path);
 
     if (!fs.existsSync(path)) {
       return null;
