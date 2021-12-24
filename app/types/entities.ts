@@ -16,6 +16,10 @@ export interface MarketsMap {
   [marketId: string]: GamesMap;
 }
 
+export interface IdsByMarketsMap {
+  [marketId: string]: string[];
+}
+
 export interface ScoresMap {
   [gameId: string]: number;
 }
