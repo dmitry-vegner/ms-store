@@ -1,5 +1,5 @@
 import {Game} from '../types/entities.js';
-import currencyConverter from './currency-converter.js';
+import {currencyConverter} from './currency-converter.js';
 import feeCalculator from './fee-calculator.js';
 import regions from './regions.js';
 

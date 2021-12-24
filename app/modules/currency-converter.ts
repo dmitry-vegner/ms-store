@@ -38,7 +38,7 @@ const backupCurrencies: CurrencyMap = {
   ZAR: 4.66,
 };
 
-class CurrencyConverter {
+export class CurrencyConverter {
   currencyValues: CurrencyMap = {};
 
   async init(): Promise<void> {
@@ -67,4 +67,4 @@ class CurrencyConverter {
   }
 }
 
-export default new CurrencyConverter();
+export const currencyConverter = new CurrencyConverter();
