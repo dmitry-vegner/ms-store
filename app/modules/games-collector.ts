@@ -3,45 +3,7 @@ import fetch from 'node-fetch';
 
 import {Game, ScoresMap} from '../types/entities.js';
 import currencyConverter from './currency-converter.js';
-import fm from './file-manager.js';
-
-/*
-const templateIds: string[] = [
-  '9NBLGGH537BL', 'BQ2NNLQPS8RS', 'BSLX1RNXR6H7', 'BW85KQB8Q31M',
-  '9N6Z8DQXSQWH', '9PGPQK0XTHRZ', '9NJRX71M5X9P', 'C1KX6KNB7XMM',
-  'BWMH951M3G3P', 'C01Z9J8S9BJP', '9P3PL76N0KWZ', 'BNRH7BRC1D02'
-];
-
-const templateGames: Game[] = [
-  { title: 'Minecraft', currency: 'ARS', price: 284 },
-  { title: 'A Plague Tale: Innocence', currency: 'ARS', price: 1299 },
-  { title: 'Batman™: Arkham Knight', currency: 'ARS', price: 219.8 },
-  {
-    title: 'Ori and the Blind Forest: Definitive Edition',
-    currency: 'ARS',
-    price: 499
-  },
-  { title: 'Disneyland Adventures', currency: 'ARS', price: 113.6 },
-  { title: 'Cuphead', currency: 'ARS', price: 284 },
-  {
-    title: 'NARUTO SHIPPUDEN™: Ultimate Ninja® STORM 4',
-    currency: 'ARS',
-    price: 239.5
-  },
-  { title: 'RESIDENT EVIL 2', currency: 'ARS', price: 492.6 },
-  { title: 'Mortal Kombat X', currency: 'ARS', price: 274.75 },
-  {
-    title: 'RUSH: A Disney • PIXAR Adventure',
-    currency: 'ARS',
-    price: 113.6
-  },
-  {
-    title: 'Plants vs. Zombies™ Garden Warfare 2',
-    currency: 'ARS',
-    price: 59.8
-  }
-];
-*/
+import fileManager from './file-manager.js';
 
 async function tryNTimes(callback: any, times = 5): Promise<boolean> {
   try {
@@ -63,8 +25,8 @@ class GamesCollector {
 
   constructor(market = 'AR') {
     this.market = market;
-    this.gameIds = fm.readData(`gamesIds/${this.market}`) || [];
-    this.games = fm.readData(`games/${this.market}`) || [];
+    this.gameIds = fileManager.readData(`gamesIds/${this.market}`) || [];
+    this.games = fileManager.readData(`games/${this.market}`) || [];
     this.gameScores = {};
   }
 
@@ -76,17 +38,11 @@ class GamesCollector {
 
   async refreshOffers(): Promise<void> {
     console.debug('refreshOffers() called for ', this.market);
-    // console.debug('collectGameIds: Before');
     this.gameIds = await this.collectGameIds();
-    // console.debug('collectGameIds: After');
-    fm.writeData(`gamesIds/${this.market}`, this.gameIds);
-    // console.debug('collectGameIds: Saved');
+    fileManager.writeData(`gamesIds/${this.market}`, this.gameIds);
 
-    // console.debug('collectGamesByIds: Before');
     this.games = await this.collectGamesByIds();
-    // console.debug('collectGamesByIds: After');
-    fm.writeData(`games/${this.market}`, this.games);
-    // console.debug('collectGamesByIds: Saved');
+    fileManager.writeData(`games/${this.market}`, this.games);
     console.debug('refreshOffers() complete for ', this.market);
   }
 

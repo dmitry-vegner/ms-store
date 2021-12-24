@@ -3,38 +3,6 @@ import currencyConverter from './currency-converter.js';
 import feeCalculator from './fee-calculator.js';
 import regions from './regions.js';
 
-/*
-const templateGames: Game[] = [
-  { title: 'Minecraft', currency: 'ARS', price: 284 },
-  { title: 'A Plague Tale: Innocence', currency: 'ARS', price: 1299 },
-  { title: 'Batman™: Arkham Knight', currency: 'ARS', price: 219.8 },
-  {
-    title: 'Ori and the Blind Forest: Definitive Edition',
-    currency: 'ARS',
-    price: 499
-  },
-  { title: 'Disneyland Adventures', currency: 'ARS', price: 113.6 },
-  { title: 'Cuphead', currency: 'ARS', price: 284 },
-  {
-    title: 'NARUTO SHIPPUDEN™: Ultimate Ninja® STORM 4',
-    currency: 'ARS',
-    price: 239.5
-  },
-  { title: 'RESIDENT EVIL 2', currency: 'ARS', price: 492.6 },
-  { title: 'Mortal Kombat X', currency: 'ARS', price: 274.75 },
-  {
-    title: 'RUSH: A Disney • PIXAR Adventure',
-    currency: 'ARS',
-    price: 113.6
-  },
-  {
-    title: 'Plants vs. Zombies™ Garden Warfare 2',
-    currency: 'ARS',
-    price: 59.8
-  }
-].map(({title, currency, price}, score): Game => ({id: score.toString(), title, currency, price, market: 'AR', score}));
-*/
-
 class GamesModificator {
   private games: Game[];
   offers = [];

@@ -1,21 +1,20 @@
 import {Game, GamesMap, MarketsMap} from '../types/entities.js';
-import Collector from './games-collector.js';
 import CurrencyConverter from './currency-converter.js';
-import fm from './file-manager.js';
+import GamesCollector from './games-collector.js';
+import fileManager from './file-manager.js';
 import regions from './regions.js';
-import l from './logger.js';
 
 class MarketsComparator {
   markets: string[];
-  collectors: Collector[];
+  collectors: GamesCollector[];
   gamesByMarkets: MarketsMap = {};
   cheapestGames: GamesMap;
   allGamesIds: string[] = [];
 
   constructor() {
     this.markets = regions.map(({key}) => key);
-    this.collectors = this.markets.map(market => new Collector(market));
-    this.cheapestGames = fm.readData('games/cheapest') || {};
+    this.collectors = this.markets.map(market => new GamesCollector(market));
+    this.cheapestGames = fileManager.readData('games/cheapest') || {};
   }
 
   async init(): Promise<void> {
@@ -51,23 +50,23 @@ class MarketsComparator {
       for (let collector of this.collectors) {
         await collector.refreshOffers();
       }
-      l.debug('success await collector.refreshOffers()');
+      console.debug('success await collector.refreshOffers()');
     } catch (e) {
-      l.debug('fail await collector.refreshOffers()', e);
+      console.debug('fail await collector.refreshOffers()', e);
     }
 
     try {
       this.collectGamesByMarkets();
-      l.debug('success this.collectGamesByMarkets()');
+      console.debug('success this.collectGamesByMarkets()');
     } catch (e) {
-      l.debug('fail this.collectGamesByMarkets()', e);
+      console.debug('fail this.collectGamesByMarkets()', e);
     }
 
     try {
       this.findCheapestGames();
-      l.debug('success this.findCheapestGames()');
+      console.debug('success this.findCheapestGames()');
     } catch (e) {
-      l.debug('fail this.findCheapestGames()', e);
+      console.debug('fail this.findCheapestGames()', e);
     }
   }
 
@@ -106,7 +105,7 @@ class MarketsComparator {
       this.cheapestGames[id] = this.gamesByMarkets[cheapestMarket][id];
     });
 
-    fm.writeData('games/cheapest', this.cheapestGames);
+    fileManager.writeData('games/cheapest', this.cheapestGames);
   }
 
   getCheapestGames(): Game[] {
