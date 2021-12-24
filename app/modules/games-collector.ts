@@ -3,7 +3,6 @@ import fetch from 'node-fetch';
 
 import {Game, ScoresMap} from '../types/entities.js';
 import currencyConverter from './currency-converter.js';
-import fileManager from './file-manager.js';
 
 async function tryNTimes(callback: any, times = 5): Promise<boolean> {
   try {
@@ -23,10 +22,10 @@ class GamesCollector {
   games: Game[];
   gameScores: ScoresMap = {};
 
-  constructor(market = 'AR') {
+  constructor(gamesIds?: string[], games?: Game[], market = 'AR') {
     this.market = market;
-    this.gameIds = fileManager.readData(`gamesIds/${this.market}`) || [];
-    this.games = fileManager.readData(`games/${this.market}`) || [];
+    this.gameIds = gamesIds || [];
+    this.games = games || [];
     this.gameScores = {};
   }
 
@@ -39,10 +38,8 @@ class GamesCollector {
   async refreshOffers(): Promise<void> {
     console.debug('refreshOffers() called for ', this.market);
     this.gameIds = await this.collectGameIds();
-    fileManager.writeData(`gamesIds/${this.market}`, this.gameIds);
 
     this.games = await this.collectGamesByIds();
-    fileManager.writeData(`games/${this.market}`, this.games);
     console.debug('refreshOffers() complete for ', this.market);
   }
 

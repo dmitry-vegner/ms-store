@@ -1,4 +1,4 @@
-import {Game, GamesMap, MarketsMap} from '../types/entities.js';
+import {Game, GamesMap, IdsByMarketsMap, MarketsMap} from '../types/entities.js';
 import CurrencyConverter from './currency-converter.js';
 import GamesCollector from './games-collector.js';
 import fileManager from './file-manager.js';
@@ -8,13 +8,21 @@ class MarketsComparator {
   markets: string[];
   collectors: GamesCollector[];
   gamesByMarkets: MarketsMap = {};
+  idsByMarkets: IdsByMarketsMap = {};
   cheapestGames: GamesMap;
   allGamesIds: string[] = [];
 
   constructor() {
     this.markets = regions.map(({key}) => key);
-    this.collectors = this.markets.map(market => new GamesCollector(market));
+    this.idsByMarkets = fileManager.readData('games/ids') || {};
+    this.gamesByMarkets = fileManager.readData('games/all') || {};
     this.cheapestGames = fileManager.readData('games/cheapest') || {};
+
+    this.collectors = this.markets.map(market => new GamesCollector(
+      this.idsByMarkets[market],
+      this.gamesByMarkets[market] ? this.getGamesArrayByGamesMap(this.gamesByMarkets[market]) : undefined,
+      market
+    ));
   }
 
   async init(): Promise<void> {
@@ -84,10 +92,18 @@ class MarketsComparator {
     return gamesMap;
   }
 
+  private getGamesArrayByGamesMap(gamesMap: GamesMap): Game[] {
+    return Object.values(gamesMap);
+  }
+
   private collectGamesByMarkets() {
-    this.collectors.forEach(collector => this.gamesByMarkets[collector.market] =
-      this.getGamesMapByGamesArray(collector.getOffers())
-    );
+    this.collectors.forEach(collector => {
+      this.gamesByMarkets[collector.market] = this.getGamesMapByGamesArray(collector.getOffers());
+      this.idsByMarkets[collector.market] = collector.getGameIds();
+    });
+
+    fileManager.writeData('games/ids', this.idsByMarkets);
+    fileManager.writeData('games/all', this.gamesByMarkets);
   }
 
   findCheapestGames(): void {
@@ -107,7 +123,12 @@ class MarketsComparator {
       this.cheapestGames[id] = this.gamesByMarkets[cheapestMarket][id];
     });
 
-    fileManager.writeData('games/cheapest', this.cheapestGames);
+    try {
+      fileManager.writeData('games/cheapest', this.cheapestGames);
+    } catch (e) {
+      console.error('Error when writing games/cheapest file');
+      console.error(e);
+    }
   }
 
   getCheapestGames(): Game[] {
