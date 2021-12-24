@@ -2,7 +2,7 @@ import {GamesResponse, IdsResponse, Product} from 'app/types/requests.js';
 import fetch from 'node-fetch';
 
 import {Game, ScoresMap} from '../types/entities.js';
-import currencyConverter from './currency-converter.js';
+import {currencyConverter} from './currency-converter.js';
 
 async function asyncJsonParseIn5Sec(response: Response): Promise<any> {
   return new Promise(async (resolve, reject) => {

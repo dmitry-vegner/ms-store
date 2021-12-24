@@ -1,5 +1,6 @@
-import CurrencyConverter from './modules/currency-converter.js';
-import MarketsComparator from './modules/markets-comparator.js';
+import {currencyConverter} from './modules/currency-converter.js';
+import {marketsComparator} from './modules/markets-comparator.js';
+import dataUpdater from './modules/data-updater.js';
 import GamesModificator from './modules/games-modificator.js';
 import fileManager from './modules/file-manager.js';
 // @ts-ignore
@@ -41,8 +42,7 @@ const helpText =
 700 1400 25%
 1400 2000 10%
 
-/ping - Проверить активность бота
-Вернёт pong, если бот работает, иначе - обращайтесь к автору бота
+/when - Узнать, когда обновлялись курсы валют и список игр
 
 /help - Получить данное сообщение`;
 
@@ -54,10 +54,10 @@ const fancyBot = new Tgfancy(token, {
 
 async function initData() {
   try {
-    await CurrencyConverter.init();
-    await MarketsComparator.init();
+    await currencyConverter.init();
+    await marketsComparator.init();
 
-    const cheapestGames: Game[] = MarketsComparator.getCheapestGames();
+    const cheapestGames: Game[] = marketsComparator.getCheapestGames();
     const isCheapestGamesLoaded = cheapestGames.length !== 0;
     console.log('isCheapestGamesLoaded', isCheapestGamesLoaded);
 
@@ -107,11 +107,11 @@ initData().then(() => {
     console.log('/refresh_currencies', chat.id);
     if (!checkUser(chat.id)) return;
     fancyBot.sendMessage(chat.id, 'Пожалуйста, подождите. Это может занять время...');
-    CurrencyConverter.refreshCurrencies()
+    dataUpdater.update('currencies')
       .then(() => fancyBot.sendMessage(chat.id, 'Курсы валют успешно обновлены'))
       .catch(error => {
         console.error('/refresh_currencies', error);
-        fancyBot.sendMessage(chat.id, 'При обновлении курсов валют произошла ошибка');
+        fancyBot.sendMessage(chat.id, error);
       });
   });
 
@@ -119,11 +119,18 @@ initData().then(() => {
     console.log('/refresh_games', chat.id);
     if (!checkUser(chat.id)) return;
     fancyBot.sendMessage(chat.id, 'Пожалуйста, подождите. Процесс займёт несколько минут!');
+
     try {
-      await MarketsComparator.refreshMarkets();
-      console.debug('/refresh_games after await MarketsComparator.refreshMarkets()');
-      const cheapestGames: Game[] = MarketsComparator.getCheapestGames();
-      console.debug('/refresh_games after MarketsComparator.getCheapestGames');
+      await dataUpdater.update('markets');
+    } catch (error) {
+      console.error('/refresh_games', error);
+      fancyBot.sendMessage(chat.id, error);
+      return;
+    }
+
+    try {
+      const cheapestGames: Game[] = marketsComparator.getCheapestGames();
+      console.debug('/refresh_games after marketsComparator.getCheapestGames');
       gamesModificator = new GamesModificator(cheapestGames);
       await gamesModificator.init();
       console.debug('/refresh_games after GamesModificator.setGames(Object.values(cheapestGames))');
@@ -154,9 +161,11 @@ initData().then(() => {
     }
   });
 
-  fancyBot.onText(/^\/ping$/, async ({chat}: {chat: any}) => {
-    console.log(`/ping`, chat.id);
-    fancyBot.sendMessage(chat.id, 'pong');
+  fancyBot.onText(/^\/when$/, async ({chat}: {chat: any}) => {
+    console.log(`/when`, chat.id);
+
+    const messageResponse = [dataUpdater.when('currencies'), dataUpdater.when('markets')].join('\n');
+    fancyBot.sendMessage(chat.id, messageResponse);
   });
 
   fancyBot.onText(/^\/help$/, async ({chat}: {chat: any}) => {

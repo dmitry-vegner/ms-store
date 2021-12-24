@@ -1,10 +1,10 @@
 import {Game, GamesMap, IdsByMarketsMap, MarketsMap} from '../types/entities.js';
-import CurrencyConverter from './currency-converter.js';
+import {currencyConverter} from './currency-converter.js';
 import GamesCollector from './games-collector.js';
 import fileManager from './file-manager.js';
 import regions from './regions.js';
 
-class MarketsComparator {
+export class MarketsComparator {
   markets: string[];
   collectors: GamesCollector[];
   gamesByMarkets: MarketsMap = {};
@@ -27,7 +27,7 @@ class MarketsComparator {
 
   async init(): Promise<void> {
     try {
-      await CurrencyConverter.init();
+      await currencyConverter.init();
     } catch (e) {
       console.error('Цены ебаные', e);
     }
@@ -136,4 +136,4 @@ class MarketsComparator {
   }
 }
 
-export default new MarketsComparator();
+export const marketsComparator = new MarketsComparator();
