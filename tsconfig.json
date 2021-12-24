@@ -18,5 +18,6 @@
     "alwaysStrict": true,
     "noUnusedLocals": true,
     "forceConsistentCasingInFileNames": true
-  }
+  },
+  "types": ["node"]
 }

@@ -16,6 +16,8 @@ interface Messages {
 
 interface Target {
   safeInterval: number;
+  autoUpdateInterval: number;
+  autoUpdateTimer: NodeJS.Timer | null;
   lastUpdate: number;
   isUpdateInProgress: boolean;
   update: AsyncUpdateFunction;
@@ -31,6 +33,8 @@ class DataUpdater {
   private targets: Targets = {
     currencies: {
       safeInterval: 5 * 60e3,
+      autoUpdateInterval: 20 * 60e3,
+      autoUpdateTimer: null,
       lastUpdate: 0,
       isUpdateInProgress: false,
       update: async () => currencyConverter.refreshCurrencies(),
@@ -43,6 +47,8 @@ class DataUpdater {
     },
     markets: {
       safeInterval: 15 * 60e3,
+      autoUpdateInterval: 30 * 60e3,
+      autoUpdateTimer: null,
       lastUpdate: 0,
       isUpdateInProgress: false,
       update: async () => marketsComparator.refreshMarkets(),
@@ -55,10 +61,13 @@ class DataUpdater {
     }
   };
 
-  async update(targetKey: TargetKey): Promise<void> {
-    if (!['currencies', 'markets'].includes(targetKey)) {
-      throw this.INCORRECT_TARGET_MESSAGE;
-    }
+  constructor() {
+    const targets: TargetKey[] = ['currencies', 'markets'];
+    targets.forEach(target => this.startTimer(target));
+  }
+
+  checkForUpdate(targetKey: TargetKey): void {
+    this.checkTarget(targetKey);
 
     const target = this.targets[targetKey];
     const {isUpdateInProgress, messages} = target;
@@ -73,23 +82,47 @@ class DataUpdater {
     if (curTime - lastUpdate < safeInterval) {
       throw messages.tooRecently;
     }
+  }
+
+  async update(targetKey: TargetKey): Promise<void> {
+    this.checkForUpdate(targetKey);
+    const target = this.targets[targetKey];
+    const {messages} = target;
 
     target.isUpdateInProgress = true;
     try {
       await target.update();
       target.lastUpdate = new Date().getTime();
       target.isUpdateInProgress = false;
+      this.startTimer(targetKey);
     } catch (error) {
       target.isUpdateInProgress = false;
       console.error(messages.updateErrorLog, error);
+      this.startTimer(targetKey);
       throw messages.updateError;
     }
   }
 
-  when(targetKey: TargetKey): string {
-    if (!['currencies', 'markets'].includes(targetKey)) {
-      throw this.INCORRECT_TARGET_MESSAGE;
+  stopTimer(targetKey: TargetKey): void {
+    this.checkTarget(targetKey);
+    const target = this.targets[targetKey];
+    if (target.autoUpdateTimer !== null) {
+      clearTimeout(target.autoUpdateTimer);
+      target.autoUpdateTimer = null;
     }
+  }
+
+  startTimer(targetKey: TargetKey): void {
+    this.stopTimer(targetKey);
+    const target = this.targets[targetKey];
+    target.autoUpdateTimer = setTimeout(
+      () => this.update(targetKey),
+      target.autoUpdateInterval
+    );
+  }
+
+  when(targetKey: TargetKey): string {
+    this.checkTarget(targetKey);
 
     const {lastUpdate} = this.targets[targetKey];
     const targetName = {currencies: 'курсов валют', markets: 'списка игр'}[targetKey];
@@ -120,6 +153,12 @@ class DataUpdater {
     if (mPart === '' && sPart === '') return `только что`;
     if (mPart !== '' && sPart !== '') return `${mPart} и ${sPart} назад`;
     return `${mPart || sPart} назад`;
+  }
+
+  private checkTarget(targetKey: TargetKey): void {
+    if (!['currencies', 'markets'].includes(targetKey)) {
+      throw this.INCORRECT_TARGET_MESSAGE;
+    }
   }
 }
 
