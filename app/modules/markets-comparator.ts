@@ -91,6 +91,8 @@ class MarketsComparator {
   }
 
   findCheapestGames(): void {
+    this.cheapestGames = {};
+
     this.allGamesIds.forEach(id => {
       const availableMarkets = this.markets.filter(market => this.gamesByMarkets[market][id] != null);
       let cheapestMarket = availableMarkets[0];
