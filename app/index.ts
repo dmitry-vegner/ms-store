@@ -60,7 +60,6 @@ async function initData() {
     const cheapestGames: Game[] = MarketsComparator.getCheapestGames();
     const isCheapestGamesLoaded = cheapestGames.length !== 0;
     console.log('isCheapestGamesLoaded', isCheapestGamesLoaded);
-    console.debug('cheapestGames', cheapestGames);
 
     gamesModificator = new GamesModificator(cheapestGames);
     await gamesModificator.init();
