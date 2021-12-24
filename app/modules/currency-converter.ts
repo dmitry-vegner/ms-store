@@ -2,7 +2,7 @@
 import CC from 'currency-converter-lt';
 
 import {CurrencyMap} from 'app/types/entities.js';
-import fm from './file-manager.js';
+import fileManager from './file-manager.js';
 import regions from './regions.js';
 
 const currencies: string[] = regions.map(({currency}) => currency);
@@ -42,7 +42,7 @@ class CurrencyConverter {
   currencyValues: CurrencyMap = {};
 
   async init(): Promise<void> {
-    this.currencyValues = fm.readData('currency-values') as CurrencyMap || {};
+    this.currencyValues = fileManager.readData('currency-values') as CurrencyMap || {};
     if (Object.values(this.currencyValues).length === 0) {
       this.refreshCurrencies().catch(error => {
         console.error(`refreshCurrencies:`, error);
@@ -63,7 +63,7 @@ class CurrencyConverter {
         .then((currencyValue: number) => this.currencyValues[currency] = currencyValue);
     }
 
-    fm.writeData('currency-values', this.currencyValues);
+    fileManager.writeData('currency-values', this.currencyValues);
   }
 }
 

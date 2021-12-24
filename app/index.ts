@@ -1,7 +1,7 @@
 import CurrencyConverter from './modules/currency-converter.js';
 import MarketsComparator from './modules/markets-comparator.js';
 import GamesModificator from './modules/games-modificator.js';
-import fm from './modules/file-manager.js';
+import fileManager from './modules/file-manager.js';
 // @ts-ignore
 import Tgfancy from 'tgfancy';
 import feeCalculator from './modules/fee-calculator.js';
@@ -52,47 +52,26 @@ const fancyBot = new Tgfancy(token, {
   tgfancy: {textPaging: true}
 });
 
-async function tryNTimes(callback: any, times = 5): Promise<boolean> {
-  try {
-    await callback();
-    return true;
-  } catch (e) {
-    console.error(`try  ${callback} ${times - 1}Times catch:`, e);
-    return times > 0 ?
-      await tryNTimes(callback, times - 1) :
-      false;
-  }
-}
-
 async function initData() {
   try {
-    let e = true;
-    e = await tryNTimes(async () => await CurrencyConverter.init());
-    if (!e) throw 'Жопа в ценниках';
-    console.log('CurrencyConverter init');
-    e = await tryNTimes(async () => await MarketsComparator.init());
-    if (!e) throw 'Жопа в сравнилке';
-    console.log('MarketsComparator init');
-    // e = await tryNTimes(async () => await GamesModificator.init());
-    // if (!e) throw 'Жопа в хранилище!';
-    // console.log('GamesModificator init');
+    await CurrencyConverter.init();
+    await MarketsComparator.init();
 
-    MarketsComparator.findCheapestGames();
     const cheapestGames: Game[] = MarketsComparator.getCheapestGames();
     const isCheapestGamesLoaded = cheapestGames.length !== 0;
     console.log('isCheapestGamesLoaded', isCheapestGamesLoaded);
     console.debug('cheapestGames', cheapestGames);
+
     gamesModificator = new GamesModificator(cheapestGames);
     await gamesModificator.init();
-    if (!e) throw 'Жопа в хранилище!';
     console.log('GamesModificator init');
   } catch (e) {
     console.error('Error at init:', e);
   }
 }
 
-let passwords = fm.readData('auth/passwords');
-const approvedUsers = fm.readData('auth/users') || [];
+let passwords = fileManager.readData('auth/passwords');
+const approvedUsers = fileManager.readData('auth/users') || [];
 const checkUser = (chatId: string) => {
   if (approvedUsers.find(({chatId: approvedChatId}: {chatId: string}) => approvedChatId === chatId)) {
     return true;
@@ -108,9 +87,9 @@ initData().then(() => {
     if (passwords.includes(password)) {
       console.log('/password', password, chat.id);
       passwords = passwords.filter((pass: string) => pass !== password);
-      fm.writeData('auth/passwords', passwords);
+      fileManager.writeData('auth/passwords', passwords);
       approvedUsers.push({chatId: chat.id, password});
-      fm.writeData('auth/users', approvedUsers);
+      fileManager.writeData('auth/users', approvedUsers);
       fancyBot.sendMessage(chat.id, 'Авторизация успешна!');
       return;
     }
