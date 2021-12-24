@@ -4,15 +4,32 @@ import fetch from 'node-fetch';
 import {Game, ScoresMap} from '../types/entities.js';
 import currencyConverter from './currency-converter.js';
 
-async function tryNTimes(callback: any, times = 5): Promise<boolean> {
+async function asyncJsonParseIn5Sec(response: Response): Promise<any> {
+  return new Promise(async (resolve, reject) => {
+    const timeOut = setTimeout(() => reject('Too long json parsing'), 5e3);
+
+    try {
+      const result = await response.json();
+      clearTimeout(timeOut);
+      resolve(result);
+    } catch (error) {
+      clearTimeout(timeOut);
+      reject(error)
+    }
+  });
+}
+
+async function stubborn_fetch(url: string, attempt = 3): Promise<GamesResponse | null> {
   try {
-    await callback();
-    return true;
-  } catch (e) {
-    console.error(`try${times - 1}Times catch:`, e);
-    return times > 0 ?
-      await tryNTimes(callback, times - 1) :
-      false;
+    const response = await fetch(url) as Response;
+    const result = await asyncJsonParseIn5Sec(response);
+    return result as Promise<GamesResponse>;
+  } catch (error) {
+    console.error('Error at stubborn_fetch!');
+    console.error('  url:', url);
+    console.error('  error:', error);
+
+    return attempt <= 0 ? null : stubborn_fetch(url, attempt - 1);
   }
 }
 
@@ -36,11 +53,8 @@ class GamesCollector {
   }
 
   async refreshOffers(): Promise<void> {
-    console.debug('refreshOffers() called for ', this.market);
     this.gameIds = await this.collectGameIds();
-
     this.games = await this.collectGamesByIds();
-    console.debug('refreshOffers() complete for ', this.market);
   }
 
   getOffers(): Game[] {
@@ -109,14 +123,23 @@ class GamesCollector {
     const chunksCount = Math.ceil(reqUrls.length / chunkSize);
     const games: Game[] = [];
 
+    console.debug('Ferfreshing games for ', this.market);
     for (let chunkIndex = 0; chunkIndex < chunksCount; chunkIndex++) {
       const startIndex = chunkIndex * chunkSize;
       const endIndex = startIndex + chunkSize;
       const urlsChunk: string[] = reqUrls.slice(startIndex, endIndex);
+      console.debug(`  chunk ${chunkIndex + 1} of ${chunksCount}:`);
+      console.debug(`    started`);
 
-      const reqs = urlsChunk.map(url => tryNTimes(async () => {
-        const {Products} = await fetch(url).then(res => res.json()) as GamesResponse;
-        Products?.forEach(({ProductId: id, LocalizedProperties: lang, DisplaySkuAvailabilities: market}: Product) => {
+      const reqs = urlsChunk.map(url => stubborn_fetch(url));
+      const resps: Array<GamesResponse | null> = await Promise.all(reqs);
+      resps.forEach((response: GamesResponse | null) => {
+        if (response == null) {
+          console.error('urlsChunk response failed');
+          return;
+        }
+
+        response.Products.forEach(({ProductId: id, LocalizedProperties: lang, DisplaySkuAvailabilities: market}: Product) => {
           const title = lang[0]?.ProductTitle || '';
           const price = market[0]?.Availabilities[0]?.OrderManagementData?.Price?.ListPrice || 0;
           const currency = market[0]?.Availabilities[0]?.OrderManagementData?.Price?.CurrencyCode || 'ARS';
@@ -131,10 +154,11 @@ class GamesCollector {
             id, title, currency, price, convertedPrice, score: this.gameScores[id] || 0, market: this.market,
           });
         });
-      }));
-      await Promise.all(reqs);
+      });
+      console.debug(`    finished`);
     }
 
+    console.debug('  chunks finished');
     return games;
   }
 }
