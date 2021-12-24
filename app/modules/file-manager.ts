@@ -5,6 +5,10 @@ class FileManager {
   basePath = path.resolve('./app/data');
 
   createFoldersIfNeed(path: string): void {
+    if (!path.includes('/')) {
+      return;
+    }
+
     const pathWithoutFile = path.replace(/\/[^\/]+$/, '');
     const endPath = this.basePath + '/' + pathWithoutFile;
     if (!fs.existsSync(endPath)) {
@@ -15,7 +19,11 @@ class FileManager {
   writeData(key: string, data: any, ext = 'json', flag = 'w'): void {
     const resData = ext === 'json' ? JSON.stringify(data) : data;
     this.createFoldersIfNeed(key);
-    fs.writeFileSync(`${this.basePath}/${key}.${ext}`, resData, {flag});
+    try {
+      fs.writeFileSync(`${this.basePath}/${key}.${ext}`, resData, {flag});
+    } catch (e) {
+      console.error('Ошибка записи в файл', e);
+    }
   }
 
   appendData(key: string, data: any, ext = 'json'): void {
