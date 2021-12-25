@@ -19,11 +19,11 @@ async function asyncJsonParseIn5Sec(response: Response): Promise<any> {
   });
 }
 
-async function stubborn_fetch(url: string, attempt = 3): Promise<GamesResponse | null> {
+async function stubborn_fetch(url: string, attempt = 3): Promise<any | null> {
   try {
     const response = await fetch(url) as Response;
     const result = await asyncJsonParseIn5Sec(response);
-    return result as Promise<GamesResponse>;
+    return result as Promise<any>;
   } catch (error) {
     console.error('Error at stubborn_fetch!');
     console.error('  url:', url);
@@ -74,7 +74,7 @@ class GamesCollector {
     const getUrl = (skip = 0, count = 200) => `https://reco-public.rec.mp.microsoft.com/channels/Reco/V8.0/Lists/Computed/` +
       `${category}?Market=${this.market}&ItemTypes=Game&deviceFamily=Windows.Xbox&count=${count}&skipitems=${skip}`;
 
-    const totalItesmResponse = await fetch(getUrl(0, 1)).then(resp => resp.json()) as IdsResponse;
+    const totalItesmResponse = await stubborn_fetch(getUrl(0, 1)) as IdsResponse;
     const totalItems = totalItesmResponse.PagingInfo.TotalItems || 2000;
 
     const idsPerRequest = 200;
@@ -87,8 +87,7 @@ class GamesCollector {
     });
 
     for (let part = 0; part < requestsCount; part++) {
-      const request: Promise<IdsResponse> = fetch(getUrl(part * idsPerRequest, idsPerRequest))
-        .then(resp => resp.json()) as Promise<IdsResponse>;
+      const request: Promise<IdsResponse> = stubborn_fetch(getUrl(part * idsPerRequest, idsPerRequest));
       requests.push(request.then((res: IdsResponse): string[] => mapIdsResponse(res)));
     }
 
@@ -132,7 +131,7 @@ class GamesCollector {
       console.debug(`  chunk ${chunkIndex + 1} of ${chunksCount}:`);
       console.debug(`    started`);
 
-      const reqs = urlsChunk.map(url => stubborn_fetch(url));
+      const reqs = urlsChunk.map((url): Promise<GamesResponse> => stubborn_fetch(url));
       const resps: Array<GamesResponse | null> = await Promise.all(reqs);
       resps.forEach((response: GamesResponse | null) => {
         if (response == null) {
