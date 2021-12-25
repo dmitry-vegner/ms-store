@@ -138,16 +138,20 @@ class DataUpdater {
   }
 
   private getBeatyTime(m: number, s: number): string {
-    const mLastNumber = m.toString().slice(-1);
+    const mLastTwoDigits = m.toString().slice(-2);
+    const mLastDigit = m.toString().slice(-1);
     const mWord =
-      ['0', '5', '6', '7', '8', '9'].includes(mLastNumber) ? 'минут' :
-      ['1'].includes(mLastNumber) ? 'минуту' : 'минуты';
+      ['11', '12', '13', '14'].includes(mLastTwoDigits) ? 'минут' :
+      ['0', '5', '6', '7', '8', '9'].includes(mLastDigit) ? 'минут' :
+      ['1'].includes(mLastDigit) ? 'минуту' : 'минуты';
     const mPart = m === 0 ? `` : `${m} ${mWord}`;
 
-    const sLastNumber = s.toString().slice(-1);
+    const sLastTwoDigits = s.toString().slice(-2);
+    const sLastDigit = s.toString().slice(-1);
     const sWord =
-      ['0', '5', '6', '7', '8', '9'].includes(sLastNumber) ? 'секунд' :
-      ['1'].includes(sLastNumber) ? 'секунду' : 'секунды';
+      ['11', '12', '13', '14'].includes(sLastTwoDigits) ? 'секунд' :
+      ['0', '5', '6', '7', '8', '9'].includes(sLastDigit) ? 'секунд' :
+      ['1'].includes(sLastDigit) ? 'секунду' : 'секунды';
     const sPart = s === 0 ? `` : `${s} ${sWord}`;
 
     if (mPart === '' && sPart === '') return `только что`;
