@@ -106,7 +106,15 @@ initData().then(() => {
   fancyBot.onText(/^\/refresh_currencies$/, async ({chat}: {chat: any}) => {
     console.log('/refresh_currencies', chat.id);
     if (!checkUser(chat.id)) return;
-    fancyBot.sendMessage(chat.id, 'Пожалуйста, подождите. Это может занять время...');
+
+    try {
+      dataUpdater.checkForUpdate('currencies');
+      fancyBot.sendMessage(chat.id, 'Пожалуйста, подождите. Это может занять время...');
+    } catch (error) {
+      console.error('/refresh_currencies', error);
+      fancyBot.sendMessage(chat.id, error);
+    }
+
     dataUpdater.update('currencies')
       .then(() => fancyBot.sendMessage(chat.id, 'Курсы валют успешно обновлены'))
       .catch(error => {
@@ -118,7 +126,14 @@ initData().then(() => {
   fancyBot.onText(/^\/refresh_games$/, async ({chat}: {chat: any}) => {
     console.log('/refresh_games', chat.id);
     if (!checkUser(chat.id)) return;
-    fancyBot.sendMessage(chat.id, 'Пожалуйста, подождите. Процесс займёт несколько минут!');
+
+    try {
+      dataUpdater.checkForUpdate('markets');
+      fancyBot.sendMessage(chat.id, 'Пожалуйста, подождите. Процесс займёт несколько минут!');
+    } catch (error) {
+      console.error('/refresh_games', error);
+      fancyBot.sendMessage(chat.id, error);
+    }
 
     try {
       await dataUpdater.update('markets');
