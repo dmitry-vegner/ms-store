@@ -122,6 +122,7 @@ initData().then(() => {
     } catch (error) {
       console.error('/refresh_currencies', error);
       fancyBot.sendMessage(chat.id, error);
+      return;
     }
 
     dataUpdater.update('currencies')
@@ -142,6 +143,7 @@ initData().then(() => {
     } catch (error) {
       console.error('/refresh_games', error);
       fancyBot.sendMessage(chat.id, error);
+      return;
     }
 
     try {
