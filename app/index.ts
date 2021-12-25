@@ -13,6 +13,8 @@ const helpText =
 `/list - Сформировать список из N (по умолчанию 200) наиболее популярных игр
 Пример: /list 100
 
+/listall - Сформировать список из всех игр на распродаже
+
 /refresh_currencies - Обновить курсы валют
 Для применения новых валют потребуется обновить список игр
 Крайне не рекомендуется злоупотреблять: сервер с валютами агрессивно реагирует на частые запросы
@@ -100,6 +102,13 @@ initData().then(() => {
     console.log('/list', limit, chat.id);
     if (!checkUser(chat.id)) return;
     const list = gamesModificator.getReadableList(+limit || undefined);
+    fancyBot.sendMessage(chat.id, list || 'Список игр пуст :(');
+  });
+
+  fancyBot.onText(/^\/listall/, async ({chat}: {chat: any}) => {
+    console.log('/listall', chat.id);
+    if (!checkUser(chat.id)) return;
+    const list = gamesModificator.getReadableList(0);
     fancyBot.sendMessage(chat.id, list || 'Список игр пуст :(');
   });
 
