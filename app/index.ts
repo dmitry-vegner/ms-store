@@ -200,3 +200,7 @@ initData().then(() => {
     fancyBot.sendMessage(chat.id, helpText);
   });
 });
+
+process.on('unhandledRejection', error => {
+  console.error('unhandledRejection', error);
+});

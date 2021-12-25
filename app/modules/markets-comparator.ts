@@ -98,6 +98,9 @@ export class MarketsComparator {
   }
 
   private collectGamesByMarkets() {
+    this.allGamesIds = [];
+    this.cheapestGames = {};
+
     this.collectors.forEach(collector => {
       this.gamesByMarkets[collector.market] = this.getGamesMapByGamesArray(collector.getOffers());
       this.idsByMarkets[collector.market] = collector.getGameIds();
@@ -108,12 +111,14 @@ export class MarketsComparator {
   }
 
   findCheapestGames(): void {
-    this.cheapestGames = {};
-
     this.allGamesIds.forEach(id => {
       const availableMarkets = this.markets.filter(market => this.gamesByMarkets[market][id] != null);
-      let cheapestMarket = availableMarkets[0];
+      if (availableMarkets.length === 0) {
+        console.warn('There is excess games IDS, which are already not exist!', id);
+        return;
+      }
 
+      let cheapestMarket = availableMarkets[0];
       availableMarkets.forEach(marketKey => {
         const price = this.gamesByMarkets[marketKey][id].convertedPrice;
         if (price < this.gamesByMarkets[cheapestMarket][id].convertedPrice) {
