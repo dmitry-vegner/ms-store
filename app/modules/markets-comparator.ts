@@ -57,6 +57,7 @@ export class MarketsComparator {
     try {
       for (let collector of this.collectors) {
         await collector.refreshOffers();
+        console.debug('Collecter refreshed its offers');
       }
       console.debug('success await collector.refreshOffers()');
     } catch (e) {
