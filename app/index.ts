@@ -86,7 +86,7 @@ initData().then(() => {
   console.log('bot init');
   fancyBot.onText(/^\/password ?(.*)$/, async ({chat}: {chat: any}, [_, password]: [_: any, password: string]) => {
     if (passwords.includes(password)) {
-      console.log('/password', password, chat.id);
+      console.log('/password', password, chat.id, `@${chat.username}`);
       passwords = passwords.filter((pass: string) => pass !== password);
       fileManager.writeData('auth/passwords', passwords);
       approvedUsers.push({chatId: chat.id, password});
@@ -99,21 +99,21 @@ initData().then(() => {
   });
 
   fancyBot.onText(/^\/list ?(\d*)/, async ({chat}: {chat: any}, [_, limit]: [_: any, limit: string]) => {
-    console.log('/list', limit, chat.id);
+    console.log('/list', limit, chat.id, `@${chat.username}`);
     if (!checkUser(chat.id)) return;
     const list = gamesModificator.getReadableList(+limit || undefined);
     fancyBot.sendMessage(chat.id, list || 'Список игр пуст :(');
   });
 
   fancyBot.onText(/^\/listall/, async ({chat}: {chat: any}) => {
-    console.log('/listall', chat.id);
+    console.log('/listall', chat.id, `@${chat.username}`);
     if (!checkUser(chat.id)) return;
     const list = gamesModificator.getReadableList(0);
     fancyBot.sendMessage(chat.id, list || 'Список игр пуст :(');
   });
 
   fancyBot.onText(/^\/refresh_currencies$/, async ({chat}: {chat: any}) => {
-    console.log('/refresh_currencies', chat.id);
+    console.log('/refresh_currencies', chat.id, `@${chat.username}`);
     if (!checkUser(chat.id)) return;
 
     try {
@@ -134,7 +134,7 @@ initData().then(() => {
   });
 
   fancyBot.onText(/^\/refresh_games$/, async ({chat}: {chat: any}) => {
-    console.log('/refresh_games', chat.id);
+    console.log('/refresh_games', chat.id, `@${chat.username}`);
     if (!checkUser(chat.id)) return;
 
     try {
@@ -168,14 +168,14 @@ initData().then(() => {
   });
 
   fancyBot.onText(/^\/find ?(.*)$/, async ({chat}: {chat: any}, [_, query]: [_: any, query: string]) => {
-    console.log(`/find ${query}`, chat.id);
+    console.log(`/find ${query}`, chat.id, `@${chat.username}`);
     if (!checkUser(chat.id)) return;
     const foundGames = gamesModificator.findGames(query);
     fancyBot.sendMessage(chat.id, foundGames);
   });
 
   fancyBot.onText(/^\/setrule ?(.*)$/, async ({chat}: {chat: any}, [_, query]: [_: any, query: string]) => {
-    console.log(`/setrule ${query}`, chat.id);
+    console.log(`/setrule ${query}`, chat.id, `@${chat.username}`);
     if (!checkUser(chat.id)) return;
     try {
       feeCalculator.setRuleFromText(query);
@@ -188,14 +188,14 @@ initData().then(() => {
   });
 
   fancyBot.onText(/^\/when$/, async ({chat}: {chat: any}) => {
-    console.log(`/when`, chat.id);
+    console.log(`/when`, chat.id, `@${chat.username}`);
 
     const messageResponse = [dataUpdater.when('currencies'), dataUpdater.when('markets')].join('\n');
     fancyBot.sendMessage(chat.id, messageResponse);
   });
 
   fancyBot.onText(/^\/help$/, async ({chat}: {chat: any}) => {
-    console.log(`/help`, chat.id);
+    console.log(`/help`, chat.id, `@${chat.username}`);
     if (!checkUser(chat.id)) return;
     fancyBot.sendMessage(chat.id, helpText);
   });
