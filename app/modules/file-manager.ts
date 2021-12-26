@@ -30,7 +30,7 @@ class FileManager {
     return this.writeData(key, data, ext, 'a');
   }
 
-  readData(key: string, ext = 'json'): any {
+  readData(key: string, ext = 'json'): any | null {
     const path = `${this.basePath}/${key}.${ext}`;
 
     if (!fs.existsSync(path)) {
