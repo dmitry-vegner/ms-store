@@ -174,16 +174,17 @@ initData().then(() => {
     fancyBot.sendMessage(chat.id, foundGames);
   });
 
-  fancyBot.onText(/^\/setrule ?(.*)$/, async ({chat}: {chat: any}, [_, query]: [_: any, query: string]) => {
+  fancyBot.onText(/^\/setrule/, async ({chat}: {chat: any}, msg: any) => {
+    const query = msg.input.replace(/^\/setrule\s/, '');
     console.log(`/setrule ${query}`, chat.id, `@${chat.username}`);
     if (!checkUser(chat.id)) return;
+
     try {
       feeCalculator.setRuleFromText(query);
-      console.log('Set new rules', feeCalculator.rules);
       fancyBot.sendMessage(chat.id, 'Новые правила установлены!');
     } catch(e) {
       console.error('Failed to set new rules', e);
-      fancyBot.sendMessage(chat.id, 'Новые правила не установлены! Проверьте правильность написания правил.');
+      fancyBot.sendMessage(chat.id, 'Проверьте правильность написания правил! Помощь: /help.');
     }
   });
 
