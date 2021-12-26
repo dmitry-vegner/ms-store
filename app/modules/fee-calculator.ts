@@ -9,34 +9,44 @@ class FeeCalculator {
     {from: 1400, to: 2000, fee: 150},
   ];
 
-  setRuleFromText(rule: string): void {
-    const isRuleRange = rule.includes(' ');
-    const isRuleRelative = rule.includes('%');
-
-    this.ruleType = isRuleRange
-      ? isRuleRelative ? RuleType.RelativeRanges : RuleType.AbsoluteRanges
-      : isRuleRelative ? RuleType.Relative : RuleType.Absolute;
-
-    switch (this.ruleType) {
-      case RuleType.Absolute:
-        this.rules = parseFloat(rule);
-        break;
-      case RuleType.Relative:
-        this.rules = parseInt(rule) / 100;
-        break;
+  getRuleByQuery(query: string, ruleType?: RuleType): SimpleFeeRule | RangesFeeRule[] {
+    ruleType = ruleType ?? this.getRuleTypeFromQuery(query);
+    switch (ruleType) {
       case RuleType.AbsoluteRanges:
-        this.rules = rule.split('\n').map((range: string): RangesFeeRule => {
+        return query.split('\n').map((range: string): RangesFeeRule => {
           const [from, to, fee] = range.split(' ').map(n => parseFloat(n));
           return {from, to, fee};
         });
-        break;
       case RuleType.RelativeRanges:
-        this.rules = rule.split('\n').map((range: string): RangesFeeRule => {
+        return query.split('\n').map((range: string): RangesFeeRule => {
           const [from, to, fee] = range.split(' ').map(n => parseFloat(n));
           return {from, to, fee: fee / 100};
         });
-        break;
+      case RuleType.Relative:
+        return parseInt(query) / 100;
+      default:
+        return parseFloat(query) || 0;
     }
+  }
+
+  getRuleTypeFromQuery(query: string): RuleType {
+    const isRuleRange = query.includes(' ');
+    const isRuleRelative = query.includes('%');
+
+    const ruleType: RuleType = isRuleRange
+      ? isRuleRelative ? RuleType.RelativeRanges : RuleType.AbsoluteRanges
+      : isRuleRelative ? RuleType.Relative : RuleType.Absolute;
+
+    if (ruleType === RuleType.Absolute && isNaN(parseFloat(query))) {
+      throw 'Правило для формирования наценки написано некорректно!';
+    }
+
+    return ruleType;
+  };
+
+  setRuleFromText(query: string): void {
+    this.ruleType = this.getRuleTypeFromQuery(query);
+    this.rules = this.getRuleByQuery(query, this.ruleType);
   }
 
   getTaxedPrice(basePrice: number): number {
