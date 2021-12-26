@@ -81,6 +81,7 @@ class GamesCollector {
     const requestsCount = Math.ceil(totalItems / 200);
     const requests = [];
 
+    this.gameScores = {};
     const mapIdsResponse = ({Items}: IdsResponse): string[] => Items.map(({Id, PredictedScore}) => {
       this.gameScores[Id] = PredictedScore;
       return Id;
