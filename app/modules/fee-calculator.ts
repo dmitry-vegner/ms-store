@@ -1,13 +1,23 @@
 import {RuleType, SimpleFeeRule, RangesFeeRule} from '../types/entities.js';
+import fileManager from './file-manager.js';
+
+const DEFAULT_RULE_TYPE: RuleType = RuleType.AbsoluteRanges;
+const DEFAULT_RULES: RangesFeeRule[] = [
+  {from: 0, to: 500, fee: 85},
+  {from: 500, to: 700, fee: 135},
+  {from: 700, to: 1400, fee: 140},
+  {from: 1400, to: 2000, fee: 150},
+];
 
 class FeeCalculator {
-  ruleType: RuleType = RuleType.AbsoluteRanges;
-  rules: SimpleFeeRule | RangesFeeRule[] = [
-    {from: 0, to: 500, fee: 85},
-    {from: 500, to: 700, fee: 135},
-    {from: 700, to: 1400, fee: 140},
-    {from: 1400, to: 2000, fee: 150},
-  ];
+  ruleType: RuleType = DEFAULT_RULE_TYPE;
+  rules: SimpleFeeRule | RangesFeeRule[] = DEFAULT_RULES;
+
+  constructor() {
+    try {
+      this.readRulesFromFile();
+    } catch (_) {}
+  }
 
   getRuleByQuery(query: string, ruleType?: RuleType): SimpleFeeRule | RangesFeeRule[] {
     ruleType = ruleType ?? this.getRuleTypeFromQuery(query);
@@ -47,6 +57,7 @@ class FeeCalculator {
   setRuleFromText(query: string): void {
     this.ruleType = this.getRuleTypeFromQuery(query);
     this.rules = this.getRuleByQuery(query, this.ruleType);
+    this.saveRulesToFile();
   }
 
   getTaxedPrice(basePrice: number): number {
@@ -80,6 +91,24 @@ class FeeCalculator {
     }
 
     return Math.floor(basePrice + fee);
+  }
+
+  private saveRulesToFile(): void {
+    fileManager.writeData('fee-info', {
+      type: this.ruleType,
+      rules: this.rules,
+    });
+  }
+
+  private readRulesFromFile(): void {
+    const info = fileManager.readData('fee-info');
+    this.ruleType = info?.type || this.ruleType;
+    this.rules = info?.rules || this.rules;
+
+    if (info === null) {
+      this.saveRulesToFile();
+      throw 'Чтение правил начисления комиссии из файла не удалось.';
+    }
   }
 }
 
