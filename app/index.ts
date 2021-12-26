@@ -200,6 +200,21 @@ initData().then(() => {
     if (!checkUser(chat.id)) return;
     fancyBot.sendMessage(chat.id, helpText);
   });
+
+  fancyBot.onText(/^\/getlog$/, ({chat}: {chat: any}) => {
+    console.log(`/getlog`, chat.id, `@${chat.username}`);
+    if (!checkUser(chat.id) || chat.username !== 'DmitryNevada') return;
+
+    const logPath = fileManager.getFileFullPath('log');
+    fancyBot.sendDocument(chat.id, logPath)
+      .then(() => {
+        fileManager.clearFile(logPath);
+        fancyBot.sendMessage(chat.id, 'Журнал очищен.');
+      })
+      .catch(() => {
+        fancyBot.sendMessage(chat.id, 'Журнал записей отсутствует или пуст.');
+      });
+  });
 });
 
 process.on('unhandledRejection', error => {
