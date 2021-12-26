@@ -2,7 +2,23 @@ import * as fs from 'fs';
 import path from 'path';
 
 class FileManager {
-  basePath = path.resolve('./app/data');
+  basePath = path.resolve('./');
+  dataPath = path.resolve('./app/data');
+
+  isFileExist(fullPath: string): boolean {
+    return fs.existsSync(fullPath);
+  }
+
+  getFileFullPath(path: string, inData = false): string {
+    const basePath = inData ? this.dataPath : this.basePath;
+    return basePath + '/' + path;
+  }
+
+  clearFile(fullPath: string): void {
+    if (this.isFileExist(fullPath)) {
+      fs.writeFileSync(fullPath, '');
+    }
+  }
 
   createFoldersIfNeed(path: string): void {
     if (!path.includes('/')) {
@@ -10,7 +26,7 @@ class FileManager {
     }
 
     const pathWithoutFile = path.replace(/\/[^\/]+$/, '');
-    const endPath = this.basePath + '/' + pathWithoutFile;
+    const endPath = this.dataPath + '/' + pathWithoutFile;
     if (!fs.existsSync(endPath)) {
       fs.mkdirSync(endPath, {recursive: true});
     }
@@ -20,7 +36,7 @@ class FileManager {
     const resData = ext === 'json' ? JSON.stringify(data) : data;
     this.createFoldersIfNeed(key);
     try {
-      fs.writeFileSync(`${this.basePath}/${key}.${ext}`, resData, {flag});
+      fs.writeFileSync(`${this.dataPath}/${key}.${ext}`, resData, {flag});
     } catch (e) {
       console.error('Ошибка записи в файл', e);
     }
@@ -31,7 +47,7 @@ class FileManager {
   }
 
   readData(key: string, ext = 'json'): any | null {
-    const path = `${this.basePath}/${key}.${ext}`;
+    const path = `${this.dataPath}/${key}.${ext}`;
 
     if (!fs.existsSync(path)) {
       return null;
