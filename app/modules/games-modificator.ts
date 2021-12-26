@@ -56,8 +56,7 @@ class GamesModificator {
   }
 
   private getGameRecord({id, title, currency, price, market}: Game, isComplex = true): string {
-    const coeff = {AR: 1.025, TR: 1.045}[market] || 1;
-    const convertedPrice = Math.ceil(coeff * currencyConverter.getConvertedPrice(price, currency));
+    const convertedPrice = currencyConverter.getConvertedPrice(price, currency);
     const endPrice = feeCalculator.getTaxedPrice(convertedPrice);
     const fee = endPrice - convertedPrice;
 
