@@ -30,16 +30,16 @@ class GamesModificator {
 
     return foundGames.length ?
       foundGames.map(game => this.getGameRecord(game)).join('\n') :
-      'Игр по вашему запросу не найдено :(';
+      'Игр по вашему запросу не найдено. Можете попробовать глобальный поиск вне распродаж: /findglobal.';
   }
 
-  getReadableList(limit = 200): string {
+  getReadableList(limit = 200, isComplex = false): string {
     limit = limit || this.games.length + 1;
 
     const sortedGames: string[] = this.games
       .sort((a, b) => a.score - b.score)
       .slice(0, limit)
-      .map(game => this.getGameRecord(game, false))
+      .map(game => this.getGameRecord(game, isComplex))
       .sort((a, b) => a.toLowerCase() < b.toLowerCase() ? -1 : 1);
 
     const letters = sortedGames.map(offerName => offerName.toUpperCase().slice(0, 1));

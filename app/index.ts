@@ -7,6 +7,7 @@ import fileManager from './modules/file-manager.js';
 import Tgfancy from 'tgfancy';
 import feeCalculator from './modules/fee-calculator.js';
 import {Game} from './types/entities.js';
+import {globalFinder} from './modules/global-finder.js';
 
 let gamesModificator: GamesModificator;
 const helpText = 
@@ -167,11 +168,38 @@ initData().then(() => {
     }
   });
 
-  fancyBot.onText(/^\/find ?(.*)$/, async ({chat}: {chat: any}, [_, query]: [_: any, query: string]) => {
+  fancyBot.onText(/^\/find$/, async ({chat}: {chat: any}) => {
+    console.log(`/find`, chat.id, `@${chat.username}`);
+    if (!checkUser(chat.id)) return;
+    fancyBot.sendMessage(chat.id, 'Параметром поиска игры должна быть строка');
+  });
+
+  fancyBot.onText(/^\/find (.*)$/, async ({chat}: {chat: any}, [_, query]: [_: any, query: string]) => {
     console.log(`/find ${query}`, chat.id, `@${chat.username}`);
     if (!checkUser(chat.id)) return;
     const foundGames = gamesModificator.findGames(query);
     fancyBot.sendMessage(chat.id, foundGames);
+  });
+
+  fancyBot.onText(/^\/findglobal ?(.*)$/, async ({chat}: {chat: any}, [_, query]: [_: any, query: string]) => {
+    console.log(`/findglobal ${query}`, chat.id, `@${chat.username}`);
+    if (!checkUser(chat.id)) return;
+
+    fancyBot.sendMessage(chat.id, 'Подождите, осуществляется поиск...');
+    try {
+      const foundGames = await globalFinder.getCheapestGamesByQuery(query);
+      if (foundGames.length === 0) {
+        fancyBot.sendMessage(chat.id, 'Не удалось найти игры по данному запросу.');
+        return;
+      }
+
+      const localGamesModificator = new GamesModificator(foundGames);
+      const list = localGamesModificator.getReadableList(0, true);
+      fancyBot.sendMessage(chat.id, list);
+    } catch (error) {
+      console.error('', error);
+      fancyBot.sendMessage(chat.id, 'При поиске игр произошла ошибка!');
+    }
   });
 
   fancyBot.onText(/^\/setrule/, async ({chat}: {chat: any}, msg: any) => {

@@ -52,6 +52,11 @@ class GamesCollector {
     }
   }
 
+  async setGamesIds(gamesIds: string[]): Promise<void> {
+    this.gameIds = gamesIds;
+    this.games = await this.collectGamesByIds();
+  }
+
   async refreshOffers(): Promise<void> {
     this.gameIds = await this.collectGameIds();
     this.games = await this.collectGamesByIds();
