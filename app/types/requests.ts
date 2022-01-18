@@ -20,6 +20,13 @@ export interface LocalizedProperty {
   Markets: string[];
 }
 
+export interface MarketProperty {
+  RelatedProducts: {
+    RelatedProductId: string;
+    RelationshipType: 'addOnParent' | 'SellableBy' | 'Bundle' | 'Parent' | 'Extends' | string;
+  }[];
+}
+
 export interface OrderManagementData {
   Price: {
     CurrencyCode: 'ARS' | string;
@@ -37,11 +44,19 @@ export interface DisplaySkuAvailability {
     Markets: string[];
     OrderManagementData: OrderManagementData;
   }[];
+  Sku: {
+    Properties: {
+      Packages?: {
+        MainPackageFamilyNameForDlc: string | null;
+      }[];
+    };
+  };
 }
 
 export interface Product {
   ProductId: string;
   LocalizedProperties: LocalizedProperty[];
+  MarketProperties: MarketProperty[];
   DisplaySkuAvailabilities: DisplaySkuAvailability[];
 }
 
