@@ -145,11 +145,23 @@ class GamesCollector {
           return;
         }
 
-        response.Products.forEach(({ProductId: id, LocalizedProperties: lang, DisplaySkuAvailabilities: market}: Product) => {
+        response.Products.forEach(({
+          ProductId: id,
+          MarketProperties: marketProps,
+          LocalizedProperties: lang,
+          DisplaySkuAvailabilities: market
+        }: Product) => {
           const title = lang[0]?.ProductTitle || '';
           const price = market[0]?.Availabilities[0]?.OrderManagementData?.Price?.ListPrice || 0;
           const currency = market[0]?.Availabilities[0]?.OrderManagementData?.Price?.CurrencyCode || 'ARS';
           const convertedPrice = currencyConverter.getConvertedPrice(price, currency);
+
+          const packages = market[0].Sku.Properties.Packages;
+          const hasDlcFamily = packages && packages[0] ? packages[0].MainPackageFamilyNameForDlc !== null : false;
+          const hasAddOnParent = marketProps && marketProps[0] &&
+            marketProps[0].RelatedProducts?.some(({RelationshipType}) => RelationshipType === 'addOnParent');
+
+          const isDlc = hasDlcFamily || hasAddOnParent;
 
           if (title === '' || price === 0) {
             console.error('empty game with id', id);
@@ -157,7 +169,7 @@ class GamesCollector {
           }
 
           games.push({
-            id, title, currency, price, convertedPrice, score: this.gameScores[id] || 0, market: this.market,
+            id, title, isDlc, currency, price, convertedPrice, score: this.gameScores[id] || 0, market: this.market,
           });
         });
       });

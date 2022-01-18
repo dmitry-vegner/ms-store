@@ -1,6 +1,7 @@
 export interface Game {
   id: string;
   title: string;
+  isDlc: boolean;
   currency: string;
   price: number;
   convertedPrice: number;

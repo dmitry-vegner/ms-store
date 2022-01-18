@@ -55,15 +55,16 @@ class GamesModificator {
       .join('\n');
   }
 
-  private getGameRecord({id, title, currency, price, market}: Game, isComplex = true): string {
+  private getGameRecord({id, title, isDlc, currency, price, market}: Game, isComplex = true): string {
     const convertedPrice = currencyConverter.getConvertedPrice(price, currency);
     const endPrice = feeCalculator.getTaxedPrice(convertedPrice);
     const fee = endPrice - convertedPrice;
 
     const marketSuffix = market === 'AR' ? '' : ' ' + regions.find(({key}) => key === market)?.title;
+    const dlcSuffix = isDlc ? ' DLC' : '';
     return isComplex ?
-      `[${id}${marketSuffix}] ${title} — ${convertedPrice} + ${fee} = ${endPrice}₽` :
-      `${title} — ${endPrice}${marketSuffix}`;
+      `[${id}${marketSuffix}] ${title}${dlcSuffix} — ${convertedPrice} + ${fee} = ${endPrice}₽` :
+      `${title}${dlcSuffix} — ${endPrice}${marketSuffix}`;
   }
 }
 
