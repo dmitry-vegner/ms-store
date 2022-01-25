@@ -122,7 +122,7 @@ class GamesCollector {
   private async collectGamesByIds(): Promise<Game[]> {
     const idsByChunks: string[][] = this.splitByChunks(this.gameIds);
     const reqUrls: string[] = idsByChunks.map(idsChunk => `https://displaycatalog.mp.microsoft.com/v7.0/products?bigIds=` +
-      `${idsChunk.join(',')}&market=${this.market}&languages=ru-ru`);
+      `${idsChunk.join(',')}&market=${this.market}&languages=ru-ru&MS-CV=DGU1mcuYo0WMMp F.1`);
 
     // Количество одновременных запросов, которые сервер XBOX способен обработать
     const chunkSize = 15;
